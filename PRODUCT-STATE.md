@@ -72,6 +72,7 @@
 | 1 | Desired state for Ours — `desired` config, drift panel + align, drift metrics/alerts | Planned |
 | 2 | Health contracts (HTTP/TCP/exec) + local incident JSONL timeline + crash fingerprints | Planned |
 | 3 | Project-native `deployboard.yaml` + optional brew/cron under Ours | Planned |
+| 3 | Project `deployboard.yaml` + brew/cron | Shipped (this branch) |
 | 4 | Ours-scoped MCP agent surface (dry-run actions, respects read-only) | Planned |
 
 **Deferred (not committed):** observe-only remote / Team push-status — short note only in `ROADMAP.md`.
@@ -100,7 +101,7 @@
 
 | 维度 | 选择 |
 |---|---|
-| 后端 | Go（单 binary，stdlib + `howett.net/plist`；零其他第三方依赖） |
+| 后端 | Go（单 binary，stdlib + `howett.net/plist` + `gopkg.in/yaml.v3` for project files） |
 | 前端 | Preact + Signals + HTM（ESM vendored，`go:embed` 嵌入 binary） |
 | 数据传输 | SSE（5s 轮询式 full snapshot push） |
 | 分发 | Homebrew cask（`francistse/tap/deployboard`）+ `install.sh` / `install-release.sh` + GitHub Release darwin archives（见 `docs/RELEASE.md`） |

@@ -101,7 +101,7 @@ group since 03:00” without an external TSDB.
 
 ## Phase 3 — Project-native registration + brew/cron under Ours
 
-**Status:** planned
+**Status:** shipped
 
 **Gap:** inventory is global config. Competitors manage plists; brew-only menu apps ignore non-brew
 deploys; cron+launchd aggregators are usually read-only notes, not Deployboard.

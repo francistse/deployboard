@@ -18,6 +18,7 @@ import (
 
 	"github.com/A404coder/deployboard/internal/alerts"
 	"github.com/A404coder/deployboard/internal/contract"
+	"github.com/A404coder/deployboard/internal/cron"
 	"github.com/A404coder/deployboard/internal/desired"
 	"github.com/A404coder/deployboard/internal/diagnose"
 	"github.com/A404coder/deployboard/internal/incident"
@@ -25,6 +26,7 @@ import (
 	"github.com/A404coder/deployboard/internal/launchd"
 	"github.com/A404coder/deployboard/internal/metrics"
 	"github.com/A404coder/deployboard/internal/probe"
+	"github.com/A404coder/deployboard/internal/project"
 	"github.com/A404coder/deployboard/internal/retire"
 	"github.com/A404coder/deployboard/internal/server"
 	"github.com/A404coder/deployboard/web"
@@ -339,8 +341,10 @@ func (s *configStore) watch(ctx context.Context, every time.Duration) {
 				s.pushTelegram(alertConfig(fileCfg.Alerts).Telegram)
 				s.adoptAccess(fileCfg.ReadOnly)
 				if s.app != nil {
-					s.app.setDesired(fileCfg.Desired)
-					s.app.setContracts(fileCfg.Contracts)
+					s.app.baseInv = fileCfg.Inventory
+					s.app.baseDes = fileCfg.Desired
+					s.app.baseCon = fileCfg.Contracts
+					s.app.refreshProjects(fileCfg.Inventory, fileCfg.Desired, fileCfg.Contracts)
 				}
 			}
 			fmt.Fprintf(os.Stderr, "deployboard: config.json reloaded (%s)\n", s.path)
@@ -574,6 +578,14 @@ type appState struct {
 
 	incidents *incident.Store
 	prevJobs  map[string]string // label → last status for incident status transitions
+
+	cronMu    sync.RWMutex
+	cronMatch []string
+
+	// Base config from config.json (before project overlays).
+	baseInv inventory.Config
+	baseDes desired.Config
+	baseCon contract.Config
 }
 
 // setDesired replaces the in-memory desired-state config (hot reload).
@@ -600,6 +612,121 @@ func (a *appState) contractsConfig() contract.Config {
 	a.contractMu.RLock()
 	defer a.contractMu.RUnlock()
 	return a.contracts
+}
+
+func (a *appState) setCronMatch(patterns []string) {
+	a.cronMu.Lock()
+	a.cronMatch = append([]string{}, patterns...)
+	a.cronMu.Unlock()
+}
+
+func (a *appState) cronPatterns() []string {
+	a.cronMu.RLock()
+	defer a.cronMu.RUnlock()
+	return append([]string{}, a.cronMatch...)
+}
+
+// refreshProjects scans derive_roots for deployboard.yaml/json and overlays
+// inventory, desired, contracts, and cron_match (project wins).
+func (a *appState) refreshProjects(baseInv inventory.Config, baseDes desired.Config, baseCon contract.Config) {
+	m, err := project.Scan(baseInv.DeriveRoots)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "deployboard: project scan:", err)
+		m = project.Merge{}
+	}
+	inv := project.ApplyInventory(baseInv, m)
+	if a.store != nil {
+		a.store.mu.Lock()
+		a.store.apply(inv)
+		a.store.mu.Unlock()
+	} else if a.svc != nil {
+		a.svc.SetEnrichment(inventory.New(inv), 15*time.Second)
+	}
+	a.setDesired(project.ApplyDesired(baseDes, m))
+	a.setContracts(project.ApplyContracts(baseCon, m))
+	a.setCronMatch(m.CronMatch)
+}
+
+func (a *appState) cronCompanions() []launchd.Job {
+	patterns := a.cronPatterns()
+	if len(patterns) == 0 {
+		return nil
+	}
+	entries := cron.ParseLines(cron.LoadUserCrontab(), patterns)
+	out := make([]launchd.Job, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, launchd.Job{
+			Label:            e.Label,
+			Status:           launchd.StatusScheduled,
+			Category:         string(inventory.CategoryOurs),
+			CategorySource:   "cron",
+			Group:            "Cron",
+			CompanionSource:  "cron",
+			CompanionCommand: e.Command,
+			Program:          e.Command,
+		})
+	}
+	return out
+}
+
+// jobFacade appends cron companions onto ListJobs and refuses mutating cron labels.
+type jobFacade struct {
+	inner *recordingService
+	app   *appState
+}
+
+func (f jobFacade) ListJobs() ([]launchd.Job, error) {
+	jobs, err := f.inner.ListJobs()
+	if err != nil {
+		return nil, err
+	}
+	return append(jobs, f.app.cronCompanions()...), nil
+}
+func (f jobFacade) GetJob(label string) (*launchd.Job, error) {
+	for _, c := range f.app.cronCompanions() {
+		if c.Label == label {
+			j := c
+			return &j, nil
+		}
+	}
+	return f.inner.GetJob(label)
+}
+func (f jobFacade) Reload(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Reload(label)
+}
+func (f jobFacade) RestartSelf() error { return f.inner.RestartSelf() }
+func (f jobFacade) Start(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Start(label)
+}
+func (f jobFacade) Stop(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Stop(label)
+}
+func (f jobFacade) Disable(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Disable(label)
+}
+func (f jobFacade) Enable(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Enable(label)
+}
+func (f jobFacade) ReadLogs(label string, lines int) (*launchd.LogOutput, error) {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return &launchd.LogOutput{Label: label, Message: "cron companions have no launchd logs"}, nil
+	}
+	return f.inner.ReadLogs(label, lines)
 }
 
 // recordingService decorates the launchd service so a retirement triggered from
@@ -1307,6 +1434,9 @@ func newApp(cfg Config) (*appState, error) {
 		contracts: cfg.Contracts,
 		incidents: incident.Open(""),
 		prevJobs:  map[string]string{},
+		baseInv:   cfg.Inventory,
+		baseDes:   cfg.Desired,
+		baseCon:   cfg.Contracts,
 	}
 	app.store = newConfigStore(cfg.ConfigPath, classifier.Config(), svc, cfg.PrintTTL, app.alerts)
 	app.store.app = app
@@ -1319,6 +1449,7 @@ func newApp(cfg Config) (*appState, error) {
 	if !cfg.NoProbe {
 		app.prober = probe.New(cfg.ProbeTTL)
 	}
+	app.refreshProjects(cfg.Inventory, cfg.Desired, cfg.Contracts)
 	return app, nil
 }
 
@@ -1326,6 +1457,7 @@ func newApp(cfg Config) (*appState, error) {
 // diagnose engine, fork routes, embedded frontend).
 func newServer(cfg Config, app *appState) (*http.Server, error) {
 	diag := &diagnose.Engine{}
+	facade := jobFacade{inner: app.jobs, app: app}
 	deps := server.ForkDeps{
 		Version:   Version,
 		Access:    app.access,
@@ -1338,9 +1470,9 @@ func newServer(cfg Config, app *appState) (*http.Server, error) {
 		Drift:     app,
 		Contracts: app,
 		Incidents: app,
-		Jobs:      app.jobs,
+		Jobs:      facade,
 	}
-	router := server.NewRouterWithFork(app.jobs, diag, web.FS, deps)
+	router := server.NewRouterWithFork(facade, diag, web.FS, deps)
 	return &http.Server{Handler: router}, nil
 }
 

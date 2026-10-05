@@ -7,6 +7,8 @@
   "inventory": {
     "show_noise_default": false,
     "restart_warn_threshold": 50,
+    "include_homebrew_infra": true,
+    "homebrew_group": "Infra",
     "groups": [
       {"name": "Example App", "match": ["com.example.app.*"]},
       {"name": "Infra", "match": ["com.example.infra.*", "com.ollama.*"]}

@@ -70,6 +70,9 @@ func (c *Classifier) ClassifyWithSource(sig Signal) (Category, Source) {
 	if Match(c.cfg.Ours, sig.Label) {
 		return CategoryOurs, SourceOursPattern
 	}
+	if c.cfg.IncludeHomebrewInfra && strings.HasPrefix(sig.Label, "homebrew.mxcl.") {
+		return CategoryOurs, SourceOursPattern
+	}
 	if Match(c.cfg.Hidden, sig.Label) {
 		return CategoryNoise, SourceHiddenPattern
 	}
