@@ -24,7 +24,7 @@ instead: **which of MY deployed applications are up, broken, or intentionally of
 | **`launchctl print` truth** | `runs` (restart counter) and `print-disabled`, so a **disabled** plist stops looking like a failure. Upstream reads `launchctl list`, which has neither field. | below |
 | **Prometheus `/metrics`** | launchd state as time series — `deployboard_job_up`, `_runs`, `_last_exit_code`, `_disabled`, `_probe_*`. The only launchd→metrics exporter in this niche. | [`docs/METRICS.md`](docs/METRICS.md) |
 | **Telegram alerts + per-app toggles** | Transition-based alerts (error / offline / port unreachable / restart storm / recovery), 🔔 switch per application, cooldown + quiet hours, token from the macOS Keychain. | [`docs/ALERTS.md`](docs/ALERTS.md) |
-| **One-command macOS install** | `make install-macos` → binary to `~/bin`, LaunchAgent with `KeepAlive`, health check. Plus a Homebrew formula and a manual path. | [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md) |
+| **One-command macOS install** | Homebrew cask, `install.sh` / `install-release.sh`, or GitHub Release binaries — LaunchAgent with `KeepAlive`. | [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md) · [`docs/RELEASE.md`](docs/RELEASE.md) |
 | **Write access you control** | Read-only mode refuses `reload`/`start`/`stop` server-side and disables the row buttons; the settings switch turns it back on (writes `read_only` to `config.json`, applied in ~2s, behind a confirmation). `--read-only` on the command line stays a **hard lock** the UI cannot undo, so a monitoring box still cannot be talked into killing a service. | `docs/INSTALL-macos.md` |
 | **Multi-language UI** | English / 日本語 / 繁體中文 / 简体中文 for the embedded dashboard and the landing site. Auto-detects from the browser, persists the choice, and exposes a header + Settings switcher. | below |
 | **`config.json` hot reload** | Edit the file (or click a classify action) → applied in ~2s, no restart. | `docs/INSTALL-macos.md` |
@@ -93,29 +93,42 @@ Seventh status value, on top of upstream's six:
 
 ## Install
 
-### One command (recommended)
+Three supported paths. Maintainers: how releases stay in sync is in [`docs/RELEASE.md`](docs/RELEASE.md).
+
+### Homebrew (recommended if you already use brew)
+
+```bash
+brew install --cask francistse/tap/deployboard
+```
+
+Requires the public tap [`francistse/homebrew-tap`](https://github.com/francistse/homebrew-tap) (created once; updated automatically on each tagged release).
+
+**Do not run `brew install RoboZephyr/tap/launch-pilot`** — that tap is upstream and installs launch-pilot, not Deployboard.
+
+### GitHub Release binary (no Go, no clone)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/francistse/deployboard/main/install-release.sh | bash
+```
+
+Downloads the darwin archive for your CPU from the latest GitHub Release, then runs `install.sh --binary` (LaunchAgent + health check). Pin a version with `VERSION=vX.Y.Z` or pass `--from-release vX.Y.Z` after `bash -s --`.
+
+You can also download `deployboard_*_darwin_*.tar.gz` from the [Releases](https://github.com/francistse/deployboard/releases) page and run `bash install.sh --binary ./deployboard`.
+
+### From a clone (`install.sh`)
 
 ```bash
 git clone https://github.com/francistse/deployboard.git
 cd deployboard
-bash install.sh                      # = make install-macos
+bash install.sh                      # = make install-macos; builds with Go
+# or, use a published binary without building:
+bash install.sh --from-release       # latest
+bash install.sh --from-release v0.0.1
 ```
 
-Builds the binary, installs it to `~/bin/deployboard`, writes a LaunchAgent
-(`com.deployboard.agent`, `RunAtLoad` + `KeepAlive` so it comes back after a reboot or a
-crash) and health-checks it. No `sudo`, idempotent; `--dry-run`, `--uninstall`, `--purge`,
-`--prefix`, `--port`, `--config`, `--binary` and `--no-agent` are available.
-Full detail: [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md).
+Installs to `~/bin/deployboard`, writes LaunchAgent `com.deployboard.agent` (`RunAtLoad` + `KeepAlive`), health-checks. No `sudo`. Flags: `--dry-run`, `--uninstall`, `--purge`, `--prefix`, `--port`, `--config`, `--binary`, `--from-release`, `--no-agent`. Full detail: [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md).
 
-### Homebrew — planned, not yet available
-
-Deployboard is not installable via Homebrew yet; the formula in `Formula/deployboard.rb` is a
-starting point for a later phase, not a working install (it has no fetchable public source).
-
-**Do not run `brew install RoboZephyr/tap/launch-pilot`** — that tap belongs to upstream and
-installs upstream launch-pilot, not Deployboard.
-
-### Build from source
+### Build from source only
 
 ```bash
 git clone https://github.com/francistse/deployboard.git
@@ -123,7 +136,7 @@ cd deployboard
 make build
 ```
 
-This produces a `deployboard` binary in the project root. The frontend is embedded in the binary — no separate build step or runtime dependencies needed.
+Produces `./deployboard` with the frontend embedded — no separate UI build.
 
 ## Usage
 

@@ -11,7 +11,7 @@ export const content: Content = {
     name: "Deployboard",
     mark: "DB",
     tagline: "你的 launchd 部署，一目了然",
-    installCommand: "bash install.sh",
+    installCommand: "brew install --cask francistse/tap/deployboard",
     launchCommand: "deployboard",
     github: "github.com/francistse/deployboard",
     githubUrl: REPO,
@@ -241,8 +241,8 @@ export const content: Content = {
     {
       index: "01",
       title: "安装",
-      body: "一条命令：构建二进制文件，放到 ~/bin，写入带 RunAtLoad + KeepAlive 的 LaunchAgent，并打印健康检查。不需要 sudo，可以重复执行，包含 --dry-run 和 --uninstall。",
-      command: "bash install.sh",
+      body: "用 Homebrew cask 装二进制，或用 install-release.sh / install.sh 一并写入带 RunAtLoad + KeepAlive 的 LaunchAgent。不需要 sudo；脚本支持 --dry-run 和 --uninstall。",
+      command: "brew install --cask francistse/tap/deployboard",
     },
     {
       index: "02",
@@ -302,13 +302,13 @@ export const content: Content = {
   install: {
     eyebrow: "安装",
     title: "一条命令。一个配置文件。一个标签页。",
-    body: "install.sh 构建二进制文件，放到 ~/bin，并写入带 RunAtLoad + KeepAlive 的 LaunchAgent——重启或崩溃之后，仪表盘会自己回来，不必你再叫一个 agent 去启动它。不需要 sudo，可以重复执行，包含 --dry-run 和 --uninstall。",
+    body: "二进制优先用 Homebrew；需要 LaunchAgent 时用 install-release.sh / install.sh——重启或崩溃之后仪表盘会自己回来。不需要 sudo，可重复执行，包含 --dry-run 和 --uninstall。",
   },
   cta: {
     eyebrow: "安装",
     headline: "弄清楚你的 Mac 在跑什么。",
     body: "一条命令安装，一个配置文件告诉它什么是你的，下一次有东西在后台悄悄开始自我重启时，Telegram 会来一条消息。",
-    command: "bash install.sh",
+    command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {
     copyline: "© 2026 Deployboard — MIT 许可，fork 自 RoboZephyr/launch-pilot",

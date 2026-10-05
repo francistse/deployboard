@@ -64,6 +64,13 @@ single squashed commit on the upstream base** — don't be surprised that the pu
 history is one commit; keep working normally on your branch and it is folded in at
 release time.
 
+## Cutting a release
+
+Maintainers: follow [`docs/RELEASE.md`](docs/RELEASE.md). One `v*` tag publishes GitHub
+Release binaries, updates the Homebrew cask (when `HOMEBREW_TAP_TOKEN` is set), and is what
+`install.sh --from-release` / `install-release.sh` download. Do not publish by hand-editing
+the tap.
+
 ## Conventions
 
 - The Go module path is `github.com/A404coder/deployboard`. New files must import

@@ -11,7 +11,7 @@ export const content: Content = {
     name: "Deployboard",
     mark: "DB",
     tagline: "your launchd deployments, legible",
-    installCommand: "bash install.sh",
+    installCommand: "brew install --cask francistse/tap/deployboard",
     launchCommand: "deployboard",
     github: "github.com/francistse/deployboard",
     githubUrl: REPO,
@@ -242,8 +242,8 @@ export const content: Content = {
     {
       index: "01",
       title: "Install",
-      body: "One command: builds the binary, puts it in ~/bin, writes a LaunchAgent with RunAtLoad + KeepAlive and prints a health check. No sudo, idempotent, --dry-run and --uninstall included.",
-      command: "bash install.sh",
+      body: "Homebrew cask for the binary, or curl install-release.sh / bash install.sh for a LaunchAgent with RunAtLoad + KeepAlive. No sudo; --dry-run and --uninstall included on the scripts.",
+      command: "brew install --cask francistse/tap/deployboard",
     },
     {
       index: "02",
@@ -303,13 +303,13 @@ export const content: Content = {
   install: {
     eyebrow: "Install",
     title: "One command. One config file. One tab.",
-    body: "install.sh builds the binary, puts it in ~/bin and writes a LaunchAgent with RunAtLoad + KeepAlive — so the dashboard comes back after a reboot or a crash without you asking an agent to start it. No sudo, idempotent, --dry-run and --uninstall included.",
+    body: "Prefer Homebrew for the binary, or install-release.sh / install.sh for a LaunchAgent with RunAtLoad + KeepAlive — so the dashboard comes back after a reboot or a crash. No sudo; scripts are idempotent with --dry-run and --uninstall.",
   },
   cta: {
     eyebrow: "Install",
     headline: "Know what your Mac is running.",
     body: "One command to install, one config file to tell it what is yours, and a Telegram message the next time something quietly starts restarting itself in the background.",
-    command: "bash install.sh",
+    command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {
     copyline: "© 2026 Deployboard — MIT licensed, fork of RoboZephyr/launch-pilot",

@@ -20,6 +20,8 @@ LOG_FILE="${LOG_DIR}/deployboard.log"
 BINARY_NAME="deployboard"
 LEGACY_BINARY_NAME="launch-pilot"
 
+GITHUB_REPO="${DEPLOYBOARD_GITHUB_REPO:-francistse/deployboard}"
+
 usage() {
 	cat <<EOF
 Usage: $(basename "$0") [options]
@@ -29,11 +31,15 @@ Options:
   --port <n>           Listen port (default: ${DEFAULT_PORT}, 0 = random)
   --config <file>      Path to config.json (default: ${DEFAULT_CONFIG})
   --binary <file>      Use pre-built binary instead of building from source
+  --from-release [tag] Download a GitHub Release binary (default: latest) instead of building
   --no-agent           Do not create the LaunchAgent (run manually instead)
   --uninstall          Remove the LaunchAgent and plist; keep the binary
   --purge              With --uninstall, also remove the binary and the compatibility symlink
   --dry-run            Print what would be done and exit 0
   --help               Show this help
+
+Without --binary / --from-release, builds from this checkout with Go.
+For a curl one-liner that does not need a clone, use install-release.sh.
 EOF
 }
 
@@ -41,6 +47,7 @@ PREFIX="${DEFAULT_PREFIX}"
 PORT="${DEFAULT_PORT}"
 CONFIG_FILE="${DEFAULT_CONFIG}"
 BINARY=""
+FROM_RELEASE=""
 NO_AGENT=false
 UNINSTALL=false
 PURGE=false
@@ -52,6 +59,15 @@ while [[ $# -gt 0 ]]; do
 		--port) PORT="$2"; shift 2 ;;
 		--config) CONFIG_FILE="$2"; shift 2 ;;
 		--binary) BINARY="$2"; shift 2 ;;
+		--from-release)
+			if [[ $# -ge 2 && "$2" != --* ]]; then
+				FROM_RELEASE="$2"
+				shift 2
+			else
+				FROM_RELEASE="latest"
+				shift
+			fi
+			;;
 		--no-agent) NO_AGENT=true; shift ;;
 		--uninstall) UNINSTALL=true; shift ;;
 		--purge) PURGE=true; shift ;;
@@ -61,8 +77,77 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+if [[ -n ${BINARY} && -n ${FROM_RELEASE} ]]; then
+	echo "Use either --binary or --from-release, not both." >&2
+	exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AGENTS_DIR="${HOME}/Library/LaunchAgents"
+RELEASE_FETCH_DIR=""
+
+cleanup_release_fetch() {
+	if [[ -n ${RELEASE_FETCH_DIR} && -d ${RELEASE_FETCH_DIR} ]]; then
+		rm -rf "${RELEASE_FETCH_DIR}"
+	fi
+}
+trap cleanup_release_fetch EXIT
+
+# Resolve a GitHub release tag + download the darwin archive for this machine.
+# Sets BINARY to the extracted path. Archives are named by GoReleaser:
+#   deployboard_<version>_darwin_<amd64|arm64>.tar.gz
+fetch_release_binary() {
+	local want="$1"
+	local tag ver arch goarch url archive
+
+	if [[ $(uname -s) != Darwin ]]; then
+		echo "--from-release only works on macOS (got $(uname -s))." >&2
+		exit 1
+	fi
+	arch="$(uname -m)"
+	case "${arch}" in
+		arm64|aarch64) goarch="arm64" ;;
+		x86_64) goarch="amd64" ;;
+		*)
+			echo "Unsupported architecture: ${arch}" >&2
+			exit 1
+			;;
+	esac
+
+	if [[ ${want} == latest ]]; then
+		echo "Resolving latest GitHub release for ${GITHUB_REPO}..."
+		tag="$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" \
+			| sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+		if [[ -z ${tag} ]]; then
+			echo "Could not resolve latest release tag for ${GITHUB_REPO}." >&2
+			echo "Publish darwin archives with the Release workflow first (see docs/RELEASE.md)." >&2
+			exit 1
+		fi
+	else
+		tag="${want}"
+	fi
+	ver="${tag#v}"
+	archive="deployboard_${ver}_darwin_${goarch}.tar.gz"
+	url="https://github.com/${GITHUB_REPO}/releases/download/${tag}/${archive}"
+
+	RELEASE_FETCH_DIR="$(mktemp -d "${TMPDIR:-/tmp}/deployboard-release.XXXXXX")"
+	echo "Downloading ${url}..."
+	if ! curl -fsSL -o "${RELEASE_FETCH_DIR}/${archive}" "${url}"; then
+		echo "Download failed. Does release ${tag} include ${archive}?" >&2
+		echo "See docs/RELEASE.md — tag a release after the Release workflow is live." >&2
+		exit 1
+	fi
+	tar -xzf "${RELEASE_FETCH_DIR}/${archive}" -C "${RELEASE_FETCH_DIR}"
+	if [[ ! -f ${RELEASE_FETCH_DIR}/${BINARY_NAME} ]]; then
+		echo "Archive ${archive} did not contain ${BINARY_NAME}." >&2
+		exit 1
+	fi
+	chmod +x "${RELEASE_FETCH_DIR}/${BINARY_NAME}"
+	# Clear quarantine when present (unsigned GitHub Release binaries).
+	xattr -dr com.apple.quarantine "${RELEASE_FETCH_DIR}/${BINARY_NAME}" 2>/dev/null || true
+	BINARY="${RELEASE_FETCH_DIR}/${BINARY_NAME}"
+	echo "Using release ${tag} (${goarch})"
+}
 
 domain_for() {
 	printf 'gui/%s/%s' "$(id -u)" "$1"
@@ -164,9 +249,12 @@ if [[ ${UNINSTALL} == true ]]; then
 	exit 0
 fi
 
-# Build or locate the binary before touching a running agent. A failed build
-# leaves the previous install in place. Dry-run still compiles; it does not install.
-if [[ -n ${BINARY} ]]; then
+# Build, fetch, or locate the binary before touching a running agent. A failed
+# build/fetch leaves the previous install in place. Dry-run still compiles or
+# downloads; it does not install.
+if [[ -n ${FROM_RELEASE} ]]; then
+	fetch_release_binary "${FROM_RELEASE}"
+elif [[ -n ${BINARY} ]]; then
 	if [[ ! -f ${BINARY} ]]; then
 		echo "Binary not found: ${BINARY}" >&2
 		exit 1
@@ -177,7 +265,7 @@ else
 		( cd "${SCRIPT_DIR}" && make build )
 		BINARY="${SCRIPT_DIR}/${BINARY_NAME}"
 	else
-		echo "Go not found; provide --binary <path> or install Go." >&2
+		echo "Go not found; provide --binary <path>, --from-release, or install Go." >&2
 		exit 1
 	fi
 fi
