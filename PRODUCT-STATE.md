@@ -2,7 +2,7 @@
 
 > **产品档案**：跨 iteration 累积的产品事实记录。由 forge release 成功后自动追加，feature mode 启动时读此档案建立上下文。
 
-**Last updated**: 2026-10-05 (version line reset to v0.0.1)
+**Last updated**: 2026-10-05 (multi-language UI polish)
 **Slug**: `deployboard`
 **Current version**: v0.0.1
 **Repo**: https://github.com/francistse/deployboard
@@ -22,6 +22,12 @@
 ---
 
 ## Delivered Features
+
+### Multi-language UI (dashboard + landing)
+
+- Four locales: English, Japanese (`ja`), Traditional Chinese (`zh-Hant`), Simplified Chinese (`zh-Hans`)
+- Dashboard: plain catalogs in `web/lib/i18n.js`, Preact signal-driven `t()`, header + Settings language switch, `deployboard:locale` persistence, `navigator.language` auto-detect (incl. zh-TW/HK → zh-Hant)
+- Landing: static Next.js routes `/`, `/ja/`, `/zh-Hant/`, `/zh-Hans/` with typed content modules under `landing/src/content/`
 
 ### v0.1.0 — Initial MVP (2026-04-16)
 

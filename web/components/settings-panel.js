@@ -9,8 +9,9 @@ import {
   setAccess,
 } from '../lib/api.js';
 import { addToast, accessInfo } from '../lib/state.js';
-import { t, codeSegments, locale, setLocale, LOCALES } from '../lib/i18n.js';
+import { t, codeSegments } from '../lib/i18n.js';
 import { ConfirmDialog } from './confirm-dialog.js';
+import { LangSwitch } from './lang-switch.js';
 
 function rich(key, vars) {
   return codeSegments(key, vars).map((part, i) =>
@@ -110,18 +111,7 @@ export function SettingsPanel({ open, onClose, onAccessChange }) {
 
         <section class="settings-panel__section">
           <h3>${t('settings.language')}</h3>
-          <div class="lang-switch" role="radiogroup" aria-label=${t('settings.language')}>
-            ${LOCALES.map((code) => html`
-              <button
-                key=${code}
-                type="button"
-                role="radio"
-                class=${`lang-switch__btn ${locale.value === code ? 'lang-switch__btn--active' : ''}`}
-                aria-checked=${locale.value === code}
-                onClick=${() => setLocale(code)}
-              >${t('lang.' + code)}</button>
-            `)}
-          </div>
+          <${LangSwitch} />
         </section>
 
         <section class="settings-panel__section">

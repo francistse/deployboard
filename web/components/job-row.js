@@ -59,9 +59,9 @@ const VERIFY_EXPECTATION = {
 };
 
 function describeJob(j) {
-  const bits = [j.status];
+  const bits = [t('status.' + j.status)];
   if (j.pid > 0) bits.push(`pid ${j.pid}`);
-  if (j.disabled) bits.push('disabled');
+  if (j.disabled) bits.push(t('status.disabled'));
   return bits.join(', ');
 }
 

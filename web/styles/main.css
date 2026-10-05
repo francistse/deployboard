@@ -850,6 +850,29 @@ header p {
   color: hsl(var(--foreground));
   border-color: hsl(var(--ring));
 }
+.lang-switch--header {
+  flex-wrap: nowrap;
+  padding: 2px;
+  gap: 2px;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+}
+.lang-switch--header .lang-switch__btn {
+  border: none;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+}
+.lang-switch--header .lang-switch__btn--active {
+  background: hsl(var(--background));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+@media (max-width: 900px) {
+  .lang-switch--header .lang-switch__btn {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.65rem;
+  }
+}
 .settings-panel__section h3 {
   font-size: 0.85rem;
   font-weight: 600;

@@ -77,6 +77,20 @@ release time.
   `if: github.server_url == 'https://github.com'` where they use GitHub-only
   features, so the project's self-hosted mirror does not queue a failing run.
 
+## Adding or changing UI strings
+
+Dashboard copy lives in `web/lib/i18n.js` as five-column rows:
+`[key, en, ja, zh-Hant, zh-Hans]`. Every locale must have the same keys, the same
+`{name}` placeholders, and the same `[[code]]` marks — `npm test` asserts that.
+
+1. Add the row to `ROWS` in `web/lib/i18n.js`.
+2. Call `t('your.key')` (or `t('your.key', { name })`) from the component.
+3. For landing-site copy, edit the matching file under `landing/src/content/`
+   (`en.ts`, `ja.ts`, `zh-Hant.ts`, `zh-Hans.ts`) and keep the `Content` shape in
+   `types.ts` in sync.
+4. Prefer short native wording over literal translations; language names stay in
+   their own script in every catalog (`lang.ja` is always `日本語`).
+
 ## Reporting bugs and security issues
 
 Open an issue for bugs. For anything security-related see [`SECURITY.md`](SECURITY.md) —

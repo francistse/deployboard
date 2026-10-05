@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Header language switcher** next to the theme control (same four locales as Settings → Language)
+- **Playwright coverage** for locale switching, persistence, and `zh-TW` → `zh-Hant` auto-detect
+- README / CONTRIBUTING / PRODUCT-STATE documentation for the multi-language UI
+
+### Fixed
+
+- Missing `row.readOnlyLocked` catalog entry (locked read-only tooltip fell back to the raw key)
+- Action-verification toasts now localise status words via `t('status.*')`
+
 ## [0.0.1] — 2026-10-05
 
 Deployboard restarts its own version line at 0.0.1. Before this, the binary and the landing page
