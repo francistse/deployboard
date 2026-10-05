@@ -93,7 +93,7 @@ Seventh status value, on top of upstream's six:
 
 ## Install
 
-Three supported paths. Maintainers: how releases stay in sync is in [`docs/RELEASE.md`](docs/RELEASE.md).
+**v0.0.2** ships three supported paths. Maintainers: how releases stay in sync is in [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ### Homebrew (recommended if you already use brew)
 
@@ -101,7 +101,7 @@ Three supported paths. Maintainers: how releases stay in sync is in [`docs/RELEA
 brew install --cask francistse/tap/deployboard
 ```
 
-Requires the public tap [`francistse/homebrew-tap`](https://github.com/francistse/homebrew-tap) (created once; updated automatically on each tagged release).
+Tap: [`francistse/homebrew-tap`](https://github.com/francistse/homebrew-tap) (cask updated automatically on each tagged release).
 
 **Do not run `brew install RoboZephyr/tap/launch-pilot`** — that tap is upstream and installs launch-pilot, not Deployboard.
 
@@ -111,7 +111,7 @@ Requires the public tap [`francistse/homebrew-tap`](https://github.com/francists
 curl -fsSL https://raw.githubusercontent.com/francistse/deployboard/main/install-release.sh | bash
 ```
 
-Downloads the darwin archive for your CPU from the latest GitHub Release, then runs `install.sh --binary` (LaunchAgent + health check). Pin a version with `VERSION=vX.Y.Z` or pass `--from-release vX.Y.Z` after `bash -s --`.
+Downloads the darwin archive for your CPU from the latest GitHub Release, then runs `install.sh --binary` (LaunchAgent + health check). Pin a version with `VERSION=v0.0.2` or pass `--from-release v0.0.2` after `bash -s --`.
 
 You can also download `deployboard_*_darwin_*.tar.gz` from the [Releases](https://github.com/francistse/deployboard/releases) page and run `bash install.sh --binary ./deployboard`.
 
@@ -123,7 +123,7 @@ cd deployboard
 bash install.sh                      # = make install-macos; builds with Go
 # or, use a published binary without building:
 bash install.sh --from-release       # latest
-bash install.sh --from-release v0.0.1
+bash install.sh --from-release v0.0.2
 ```
 
 Installs to `~/bin/deployboard`, writes LaunchAgent `com.deployboard.agent` (`RunAtLoad` + `KeepAlive`), health-checks. No `sudo`. Flags: `--dry-run`, `--uninstall`, `--purge`, `--prefix`, `--port`, `--config`, `--binary`, `--from-release`, `--no-agent`. Full detail: [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md).

@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.2] — 2026-10-05
+
 ### Added
 
-- **Phase 2 release pipeline** — tag `v*` runs GoReleaser: GitHub Release darwin amd64/arm64 archives, optional Homebrew cask push to `francistse/homebrew-tap`, documented in `docs/RELEASE.md`
+- **Phase 2 release pipeline** — tag `v*` runs GoReleaser: GitHub Release darwin amd64/arm64 archives + Homebrew cask push to `francistse/homebrew-tap` (`brew install --cask francistse/tap/deployboard`), documented in `docs/RELEASE.md`
 - **`install.sh --from-release [tag]`** and **`install-release.sh`** — install a published binary (with LaunchAgent) without building from source
 - **Header language switcher** next to the theme control (same four locales as Settings → Language)
 - **Playwright coverage** for locale switching, persistence, and `zh-TW` → `zh-Hant` auto-detect
@@ -14,8 +16,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Install docs list three supported paths: Homebrew cask, GitHub Release binary, `install.sh` from a clone
+- Install docs and landing page list three supported paths: Homebrew cask, GitHub Release binary, `install.sh` from a clone
 - In-repo `Formula/deployboard.rb` is a local source-build helper; published brew install is the cask
+- Landing + package version badges report **v0.0.2**
 
 ### Fixed
 

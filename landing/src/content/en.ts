@@ -17,7 +17,7 @@ export const content: Content = {
     githubUrl: REPO,
     changelogUrl: REPO + "/blob/main/CHANGELOG.md",
     upstreamUrl: "https://github.com/RoboZephyr/launch-pilot",
-    version: "v0.0.1",
+    version: "v0.0.2",
     license: "MIT",
   },
   nav: [
@@ -37,7 +37,7 @@ export const content: Content = {
     settings: "Settings",
   },
   hero: {
-    eyebrow: "v0.0.1 · MIT · macOS · fork of launch-pilot",
+    eyebrow: "v0.0.2 · MIT · macOS · fork of launch-pilot",
     headline: ["Your deployments,", "not 545 system jobs."],
     body: "Your Mac runs hundreds of LaunchAgents — Dropbox, Chrome, Spotify, every updater. Deployboard shows the ones you actually deployed, tells you which are up, which are broken, and which you retired on purpose. Then it turns all of it into Prometheus metrics and Telegram alerts.",
     primaryCta: { label: "Install in one command", href: "#install" },
@@ -272,7 +272,7 @@ export const content: Content = {
     {
       question: "How is this different from launch-pilot, which it forks?",
       answer:
-        "Everything upstream does is still here — the job table, log tail, six diagnostics, start/stop/reload. Deployboard adds the inventory view (ours/other/noise with path derivation), launchctl print enrichment (runs and disabled), a Prometheus endpoint, Telegram alerts with per-application toggles, a one-command macOS install, and a read-only mode.",
+        "Everything upstream does is still here — the job table, log tail, six diagnostics, start/stop/reload. Deployboard adds the inventory view (ours/other/noise with path derivation), launchctl print enrichment (runs and disabled), a Prometheus endpoint, Telegram alerts with per-application toggles, read-only mode, and three install paths: Homebrew cask, GitHub Release binary (install-release.sh), and install.sh from a clone.",
     },
     {
       question: "How does it know which jobs are mine?",
@@ -303,12 +303,12 @@ export const content: Content = {
   install: {
     eyebrow: "Install",
     title: "One command. One config file. One tab.",
-    body: "Prefer Homebrew for the binary, or install-release.sh / install.sh for a LaunchAgent with RunAtLoad + KeepAlive — so the dashboard comes back after a reboot or a crash. No sudo; scripts are idempotent with --dry-run and --uninstall.",
+    body: "Three supported installs, same binary: Homebrew cask (hero command), curl install-release.sh for a LaunchAgent without Go, or bash install.sh from a clone. No sudo; scripts support --dry-run and --uninstall.",
   },
   cta: {
     eyebrow: "Install",
     headline: "Know what your Mac is running.",
-    body: "One command to install, one config file to tell it what is yours, and a Telegram message the next time something quietly starts restarting itself in the background.",
+    body: "brew install --cask francistse/tap/deployboard — or curl the release installer if you are not on Homebrew. One config file to mark what is yours.",
     command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {

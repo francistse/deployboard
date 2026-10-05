@@ -17,7 +17,7 @@ export const content: Content = {
     githubUrl: REPO,
     changelogUrl: REPO + "/blob/main/CHANGELOG.md",
     upstreamUrl: "https://github.com/RoboZephyr/launch-pilot",
-    version: "v0.0.1",
+    version: "v0.0.2",
     license: "MIT",
   },
   nav: [
@@ -37,7 +37,7 @@ export const content: Content = {
     settings: "设置",
   },
   hero: {
-    eyebrow: "v0.0.1 · MIT · macOS · fork 自 launch-pilot",
+    eyebrow: "v0.0.2 · MIT · macOS · fork 自 launch-pilot",
     headline: ["你的部署，", "不是 545 个系统任务。"],
     body: "你的 Mac 跑着几百个 LaunchAgents——Dropbox、Chrome、Spotify，还有各种更新程序。Deployboard 只显示你真正部署过的那些，告诉你哪些在运行、哪些坏了、哪些是你有意停用的。然后把这一切变成 Prometheus 指标和 Telegram 告警。",
     primaryCta: { label: "一条命令安装", href: "#install" },
@@ -302,12 +302,12 @@ export const content: Content = {
   install: {
     eyebrow: "安装",
     title: "一条命令。一个配置文件。一个标签页。",
-    body: "二进制优先用 Homebrew；需要 LaunchAgent 时用 install-release.sh / install.sh——重启或崩溃之后仪表盘会自己回来。不需要 sudo，可重复执行，包含 --dry-run 和 --uninstall。",
+    body: "三种安装方式、同一二进制：Homebrew cask（首屏命令）、不用 Go 也能装 LaunchAgent 的 curl install-release.sh、或从克隆运行 bash install.sh。不需要 sudo；脚本支持 --dry-run 和 --uninstall。",
   },
   cta: {
     eyebrow: "安装",
     headline: "弄清楚你的 Mac 在跑什么。",
-    body: "一条命令安装，一个配置文件告诉它什么是你的，下一次有东西在后台悄悄开始自我重启时，Telegram 会来一条消息。",
+    body: "brew install --cask francistse/tap/deployboard —— 没有 Homebrew 就 curl 发布安装脚本。一个配置文件标出哪些是你的。",
     command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {
