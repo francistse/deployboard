@@ -5,8 +5,11 @@
 [![Latest release](https://img.shields.io/github/v/release/francistse/deployboard)](https://github.com/francistse/deployboard/releases)
 [![Platform: macOS 13+](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey.svg)](#requirements)
 [![Go](https://img.shields.io/badge/go-1.26-00ADD8.svg)](go.mod)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/francistse)
 
 Visual control console for macOS launchd services. View status, read logs, diagnose issues, and manage user-domain launch agents — all from your browser.
+
+If Deployboard saves you time, consider [sponsoring](https://github.com/sponsors/francistse) — it keeps the launchd→Prometheus exporter maintained.
 
 > **This is a fork.** Upstream: [`RoboZephyr/launch-pilot`](https://github.com/RoboZephyr/launch-pilot) (MIT).
 > Base commit `5d9c07d`; upstream history is preserved so it can be rebased. Nothing upstream is removed.
@@ -308,4 +311,4 @@ non-GitHub hosting options.
 
 ## License
 
-MIT
+[MIT](LICENSE) licensed, so fork freely — but if it ships in your product or saves you time, a [one-off sponsor](https://github.com/sponsors/francistse) keeps me going.
