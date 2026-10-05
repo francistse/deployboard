@@ -11,7 +11,7 @@ export const content: Content = {
     name: "Deployboard",
     mark: "DB",
     tagline: "あなたの launchd デプロイを、読める形に",
-    installCommand: "bash install.sh",
+    installCommand: "brew install --cask francistse/tap/deployboard",
     launchCommand: "deployboard",
     github: "github.com/francistse/deployboard",
     githubUrl: REPO,
@@ -241,8 +241,8 @@ export const content: Content = {
     {
       index: "01",
       title: "インストール",
-      body: "コマンド一つで、バイナリをビルドして ~/bin に置き、RunAtLoad + KeepAlive の LaunchAgent を書き、ヘルスチェックを表示します。sudo は不要で、再実行でき、--dry-run と --uninstall もあります。",
-      command: "bash install.sh",
+      body: "Homebrew の cask でバイナリを入れるか、install-release.sh / install.sh で RunAtLoad + KeepAlive の LaunchAgent まで入れます。sudo 不要。スクリプトには --dry-run と --uninstall もあります。",
+      command: "brew install --cask francistse/tap/deployboard",
     },
     {
       index: "02",
@@ -302,13 +302,13 @@ export const content: Content = {
   install: {
     eyebrow: "インストール",
     title: "コマンド一つ。設定ファイル一つ。タブ一つ。",
-    body: "install.sh はバイナリをビルドして ~/bin に置き、RunAtLoad + KeepAlive の LaunchAgent を書きます。再起動やクラッシュのあと、エージェントに起動を頼まなくてもダッシュボードが戻ってきます。sudo は不要で、再実行でき、--dry-run と --uninstall もあります。",
+    body: "バイナリは Homebrew、LaunchAgent まで含めるなら install-release.sh / install.sh。再起動やクラッシュのあとでもダッシュボードが戻ります。sudo 不要、再実行でき、--dry-run と --uninstall もあります。",
   },
   cta: {
     eyebrow: "インストール",
     headline: "Mac が何を動かしているか、把握する。",
     body: "導入はコマンド一つ、自分のものを伝える設定ファイルは一つ。次に何かが静かに再起動を始めたとき、Telegram に一通届きます。",
-    command: "bash install.sh",
+    command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {
     copyline: "© 2026 Deployboard — MIT ライセンス、RoboZephyr/launch-pilot のフォーク",

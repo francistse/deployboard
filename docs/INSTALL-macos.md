@@ -1,19 +1,63 @@
 # Installing Deployboard on macOS
 
-Two paths — pick one. Both of them end with the same thing: a `launchd` LaunchAgent
-(`com.deployboard.agent`) that starts at login and self-heals (`KeepAlive`), serving
-`http://127.0.0.1:9410`.
+Three supported paths. All of them can end with the same LaunchAgent
+(`com.deployboard.agent`, `RunAtLoad` + `KeepAlive`) serving
+`http://127.0.0.1:9410` — Homebrew gives you the binary; `install.sh` /
+`install-release.sh` also wire the agent.
 
-## Option 1 — the install script (recommended)
+How maintainers cut releases for all three paths: [`RELEASE.md`](RELEASE.md).
+
+## Option 1 — Homebrew (recommended if you use brew)
 
 ```bash
-cd ~/Projects/10_deployboard
-make install-macos                 # = bash install.sh
+brew install --cask francistse/tap/deployboard
+deployboard --version
+```
+
+The cask is published into [`francistse/homebrew-tap`](https://github.com/francistse/homebrew-tap) by GoReleaser on each `v*` tag. Upgrade with `brew upgrade --cask deployboard`.
+
+To also install the LaunchAgent (config + KeepAlive), clone or curl the installer and point it at the brew binary:
+
+```bash
+bash install.sh --binary "$(brew --prefix)/bin/deployboard"
+# or, without a clone:
+curl -fsSL https://raw.githubusercontent.com/francistse/deployboard/main/install-release.sh \
+  | bash -s -- --binary "$(brew --prefix)/bin/deployboard"
+```
+
+**Do not** run `brew install RoboZephyr/tap/launch-pilot` — that tap is upstream's and installs upstream launch-pilot, not Deployboard.
+
+The in-repo [`Formula/deployboard.rb`](../Formula/deployboard.rb) is a **local source-build helper only** (`brew install --build-from-source ./Formula/deployboard.rb`). The published install is the cask.
+
+## Option 2 — GitHub Release binary (no Go)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/francistse/deployboard/main/install-release.sh | bash
 ```
 
 What it does:
 
-1. builds the binary (`make build`) unless you pass `--binary <file>` (Go not required then)
+1. downloads `install.sh` + `config.example.json` from this repo
+2. downloads `deployboard_<ver>_darwin_<amd64|arm64>.tar.gz` from the latest GitHub Release
+3. runs `install.sh --binary` (LaunchAgent, health check)
+
+Pin a version: `VERSION=v0.0.2 bash install-release.sh` or
+`bash -s -- --from-release v0.0.2` after the curl pipe.
+
+Manual path: download the archive from
+[Releases](https://github.com/francistse/deployboard/releases), extract, then
+`bash install.sh --binary ./deployboard`.
+
+## Option 3 — install.sh from a clone
+
+```bash
+cd ~/Projects/deployboard   # or wherever you cloned
+make install-macos          # = bash install.sh
+```
+
+What it does:
+
+1. builds the binary (`make build`) unless you pass `--binary <file>` or `--from-release [tag]` (Go not required then)
 2. installs it to `~/bin/deployboard` (override with `--prefix`) and leaves `~/bin/launch-pilot` as a symlink to that binary for one release
 3. creates `~/.config/deployboard/config.json` from the repo default if absent (after moving `~/.config/launch-pilot/` when the new directory does not already exist)
 4. writes `~/Library/LaunchAgents/com.deployboard.agent.plist`
@@ -22,8 +66,8 @@ What it does:
 5. `plutil -lint`, then `launchctl bootout … || true` + `launchctl bootstrap gui/$UID …`
 6. prints a health check (`curl … /`) and the dashboard URL
 
-Flags: `--prefix <dir>`, `--port <n>`, `--config <file>`, `--binary <file>`, `--no-agent`,
-`--dry-run`, `--uninstall`, `--purge`.
+Flags: `--prefix <dir>`, `--port <n>`, `--config <file>`, `--binary <file>`,
+`--from-release [tag]`, `--no-agent`, `--dry-run`, `--uninstall`, `--purge`.
 
 No `sudo` is ever needed — everything is user-scope.
 
@@ -51,7 +95,7 @@ Before it bootstraps `com.deployboard.agent` it:
 
 `--dry-run` prints the same steps and does not write under `~/Library/LaunchAgents/` (including no plist temp file there). Alert state and the retirement log also keep working if you start the new binary before the directory move: when `~/.config/deployboard/alerts.json` or `retirements.json` is missing and the file still exists under `~/.config/launch-pilot/`, the process reads the old file and logs that path once.
 
-## Option 2 — manual
+## Manual run (no LaunchAgent)
 
 ```bash
 make build
@@ -78,16 +122,6 @@ edit — about two seconds, no restart — after a confirmation dialog. Enabling
 the one thing this dashboard can do to itself, so it is deliberately explicit; the header
 badge (`✎ write mode` / `👁 read-only` / `🔒 read-only (locked)`) always shows which mode the
 server is in, and the row buttons are disabled while it is read-only.
-
-## Homebrew — planned, not yet available
-
-Phase 1 ships `install.sh` only. `Formula/deployboard.rb` is the starting point for a later phase,
-not a working install: its `url`/`homepage` point at `github.com/francistse/deployboard`, but
-there is no released tarball or tap yet, so
-`brew install --build-from-source ./Formula/deployboard.rb` fails at fetch.
-
-Do **not** run `brew install RoboZephyr/tap/launch-pilot` — that tap is upstream's and installs
-upstream launch-pilot, not Deployboard.
 
 ## Configuration
 

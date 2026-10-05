@@ -4,7 +4,9 @@ project_name: deployboard
 
 before:
   hooks:
-    - go test ./cmd/... ./internal/... ./web/...
+    # cmd/ packages exercise launchctl and fail on Linux. Full suite runs in
+    # .github/workflows/ci.yml on macos-latest before you tag.
+    - go test ./internal/... ./web/...
 
 builds:
   - main: ./cmd/deployboard
@@ -18,7 +20,7 @@ builds:
       - -s -w -X main.Version={{.Version}}
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
@@ -32,12 +34,40 @@ changelog:
       - "^test:"
       - "^ci:"
 
-# brews: DISABLED for phase 1 — Deployboard ships install.sh only.
-#
-# This block used to publish a formula into RoboZephyr/homebrew-tap, which is UPSTREAM's tap:
-# goreleaser would have written a Deployboard formula into somebody else's project. A release
-# must not do that, so the block is removed rather than left commented-out (YAML has no block
-# comments, and a "comment above an active block" is still an active block).
-#
-# Phase 2 restores this pointed at our own tap, with the homepage/description and any binary
-# rename decided there. See the Homebrew card on the kanban board.
+# Publishes a Homebrew Cask into francistse/homebrew-tap on each tagged release.
+# Requires HOMEBREW_TAP_TOKEN (Contents: write on that tap). Without the token,
+# skip_upload keeps the GitHub Release binaries working so install.sh --from-release
+# and direct asset downloads still ship.
+homebrew_casks:
+  - name: deployboard
+    binaries:
+      - deployboard
+    homepage: "https://github.com/francistse/deployboard"
+    description: "Visual control console for your own macOS launchd deployments"
+    license: "MIT"
+    directory: Casks
+    commit_msg_template: "deployboard {{ .Tag }}"
+    # Empty / unset HOMEBREW_TAP_TOKEN → skip tap push; GitHub Release assets still publish.
+    # Use index (not .Env.KEY) so local snapshot runs without the variable defined.
+    skip_upload: '{{ eq (index .Env "HOMEBREW_TAP_TOKEN") "" }}'
+    caveats: |
+      Deployboard serves a localhost dashboard (default http://127.0.0.1:9410).
+
+      To run it as a LaunchAgent with KeepAlive (recommended), use the install
+      script from the repo after brew install, or:
+        deployboard --port 9410
+
+      To enable Telegram alerts, store the bot token in the macOS Keychain:
+        security add-generic-password -U -s deployboard-telegram -a bot_token -w "$TOKEN" -T /usr/bin/security
+
+      Do not install RoboZephyr/tap/launch-pilot — that is upstream, not Deployboard.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/deployboard"]
+          end
+    repository:
+      owner: francistse
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"

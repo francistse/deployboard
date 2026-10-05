@@ -77,7 +77,7 @@
 | 后端 | Go（单 binary，stdlib + `howett.net/plist`；零其他第三方依赖） |
 | 前端 | Preact + Signals + HTM（ESM vendored，`go:embed` 嵌入 binary） |
 | 数据传输 | SSE（5s 轮询式 full snapshot push） |
-| 分发 | Homebrew tap（`RoboZephyr/tap/launch-pilot`，amd64 + arm64） |
+| 分发 | Homebrew cask（`francistse/tap/deployboard`）+ `install.sh` / `install-release.sh` + GitHub Release darwin archives（见 `docs/RELEASE.md`） |
 | 测试 | `go test` 表驱动用例 + Playwright E2E |
 | 平台 | macOS 13+ (Ventura+) |
 
