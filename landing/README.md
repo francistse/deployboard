@@ -1,8 +1,8 @@
 # Deployboard landing page
 
-Next.js / React / TypeScript marketing site for **Deployboard** — the fork of
-[launch-pilot](https://github.com/RoboZephyr/launch-pilot) that shows your own
-launchd deployments instead of 500 system jobs.
+Next.js / React / TypeScript marketing site for **Deployboard**.
+
+The positioning sentence, on every locale: *Launchd has no dashboard. This is the console for managing your own launchd services in the browser, and it exports Prometheus metrics.* The hero is that sentence, the install command, and a live preview (Ours / Other / Noise, `/metrics`, Telegram). Fork history stays in [`docs/UPSTREAM.md`](../docs/UPSTREAM.md).
 
 Exported as static HTML (`output: "export"`), so it needs no server runtime and
 can be hosted anywhere that serves files — including GitHub Pages, for free.

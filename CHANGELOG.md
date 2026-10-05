@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.3] — 2026-10-05
+
+### Added
+
+- **Desired state** for Ours jobs: drift API and UI, drift metrics, and drift alerts.
+- **Health contracts** (HTTP, TCP, exec), a local incident JSONL timeline, and crash fingerprints.
+- **Project-native registration** via `deployboard.yaml`, plus optional brew infra and cron companions under Ours.
+- **Ours-scoped MCP**: `deployboard mcp` stdio tools for status, drift, incidents, dry-run actions, and a metrics snapshot.
+- GitHub Sponsors as the funding path (`.github/FUNDING.yml`).
+
+### Changed
+
+- README is a 10-second scan: the positioning one-liner, one install command, and pictures of Ours / Other / Noise, the Prometheus exporter, and Telegram alerts. Statuses, API, architecture, and development moved to `docs/REFERENCE.md` and `docs/DEVELOPMENT.md`.
+- README links the live briefing at `https://francistse.github.io/deployboard/` from the badge row and the first paragraph.
+- Landing hero uses the same one-liner and a live preview of the three views, `/metrics`, and Telegram.
+- Visible version strings report **v0.0.3**.
+
 ## [0.0.2] — 2026-10-05
 
 ### Added

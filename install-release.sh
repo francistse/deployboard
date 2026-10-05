@@ -7,8 +7,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/francistse/deployboard/main/install-release.sh | bash
 #
 # Pin a version / pass install.sh flags:
-#   curl -fsSL .../install-release.sh | bash -s -- --from-release v0.0.2 --port 9410
-#   VERSION=v0.0.2 bash install-release.sh --no-agent
+#   curl -fsSL .../install-release.sh | bash -s -- --from-release v0.0.3 --port 9410
+#   VERSION=v0.0.3 bash install-release.sh --no-agent
 #
 # Prefer Homebrew when you have it:
 #   brew install --cask francistse/tap/deployboard

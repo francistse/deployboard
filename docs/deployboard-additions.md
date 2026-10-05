@@ -310,8 +310,7 @@ Extend the Go suites (table-driven, no sleeps, no real launchctl/network — inj
 
 ## R8 — Docs
 
-- `README.md`: keep upstream's intro, add a `## Fork: Deployboard additions` section pointing
-  at this file: new default view, `/metrics`, alerts + toggles, install script.
+- `README.md`: the public front page is the one-liner plus pictures of Ours / Other / Noise, `/metrics`, and Telegram. Maintainer detail lives in `docs/REFERENCE.md` and `docs/DEVELOPMENT.md`, and the fork's scope is this file.
 - `docs/UPSTREAM.md`: base commit, MIT licence, `git remote add upstream …` + how to rebase.
 - `docs/METRICS.md`: metric table + `prometheus.yml` scrape snippet + a Grafana query that
   graphs `deployboard_job_runs` to catch restart churn.

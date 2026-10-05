@@ -1,4 +1,4 @@
-import type { Content } from "./types";
+import type { Content, PanelJob } from "./types";
 
 /** Publishing note: every link below points at github.com/francistse/deployboard. */
 export const REPO = "https://github.com/francistse/deployboard";
@@ -91,3 +91,14 @@ export const heroPanel: Pick<Content["livePanel"], "counts" | "groups"> = {
     },
   ],
 };
+
+/**
+ * Vendor and system jobs for the Noise scene of the hero preview.
+ * Labels are machine facts, same as `heroPanel`, so they are not translated.
+ */
+export const noiseJobs: readonly PanelJob[] = [
+  { label: "com.dropbox.DropboxUpdater", status: "running", category: "noise", source: "unclassified", pid: 412, exit: 0, runs: 88, alert: false, uptime: "11d" },
+  { label: "com.google.GoogleUpdater.wake", status: "scheduled", category: "noise", source: "unclassified", pid: null, exit: 0, runs: 640, alert: false, when: "hourly" },
+  { label: "com.spotify.client.helper", status: "running", category: "noise", source: "unclassified", pid: 2201, exit: 0, runs: 14, alert: false, uptime: "4h" },
+  { label: "com.apple.SafariBookmarksSyncAgent", status: "running", category: "noise", source: "unclassified", pid: 88, exit: 0, runs: 3, alert: false, uptime: "2d" },
+];

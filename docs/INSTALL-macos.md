@@ -41,8 +41,8 @@ What it does:
 2. downloads `deployboard_<ver>_darwin_<amd64|arm64>.tar.gz` from the latest GitHub Release
 3. runs `install.sh --binary` (LaunchAgent, health check)
 
-Pin a version: `VERSION=v0.0.2 bash install-release.sh` or
-`bash -s -- --from-release v0.0.2` after the curl pipe.
+Pin a version: `VERSION=v0.0.3 bash install-release.sh` or
+`bash -s -- --from-release v0.0.3` after the curl pipe.
 
 Manual path: download the archive from
 [Releases](https://github.com/francistse/deployboard/releases), extract, then

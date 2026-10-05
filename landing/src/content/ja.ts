@@ -3,21 +3,21 @@ import { REPO, heroPanel, logStream, metricsQuery, metricsSample } from "./fixtu
 
 export const content: Content = {
   meta: {
-    title: "Deployboard — 500 個のシステムジョブではなく、自分の launchd デプロイを見る",
+    title: "Deployboard — Launchd に dashboard はない",
     description:
-      "実際にデプロイした launchd ジョブのためのローカルダッシュボードです。動いているもの、壊れたもの、意図して退役させたものが分かり、Prometheus メトリクスと、アプリごとに切り替えられる Telegram 通知も付きます。127.0.0.1 にだけバインドし、クラウドもテレメトリもありません。",
+      "Launchd に dashboard はない。自分の launchd service をブラウザで管理する console で、Prometheus metrics も出す。",
   },
   brand: {
     name: "Deployboard",
     mark: "DB",
-    tagline: "あなたの launchd デプロイを、読める形に",
+    tagline: "自分の launchd service をブラウザで管理する",
     installCommand: "brew install --cask francistse/tap/deployboard",
     launchCommand: "deployboard",
     github: "github.com/francistse/deployboard",
     githubUrl: REPO,
     changelogUrl: REPO + "/blob/main/CHANGELOG.md",
     upstreamUrl: "https://github.com/RoboZephyr/launch-pilot",
-    version: "v0.0.2",
+    version: "v0.0.3",
     license: "MIT",
   },
   nav: [
@@ -37,21 +37,24 @@ export const content: Content = {
     settings: "設定",
   },
   hero: {
-    eyebrow: "v0.0.2 · MIT · macOS · launch-pilot のフォーク",
-    headline: ["あなたのデプロイだけ。", "545 個のシステムジョブではない。"],
-    body: "Mac では Dropbox、Chrome、Spotify、あらゆるアップデータなど、何百もの LaunchAgents が動いています。Deployboard は、実際にデプロイしたものだけを見せ、動いているもの、壊れているもの、意図して退役させたものを分けます。そのうえで全体を Prometheus メトリクスと Telegram 通知にします。",
+    eyebrow: "macOS · コマンド一つ · 127.0.0.1",
+    headline: [
+      "Launchd に dashboard はない。",
+      "自分の launchd service をブラウザで管理する console で、Prometheus metrics も出す。",
+    ],
+    body: "コマンド一つで入る。ブラウザで status、log、alert を見る。",
     primaryCta: { label: "コマンド一つで導入", href: "#install" },
     secondaryCta: { label: "ソースを読む", href: REPO },
     metaRow: [
-      { key: "実行場所", value: "ローカル · 127.0.0.1 のみ" },
-      { key: "表示", value: "自分のアプリ · システムのノイズは隠す" },
-      { key: "公開", value: "/metrics · /api/jobs · SSE" },
+      { key: "導入", value: "コマンド一つ" },
+      { key: "ブラウザ", value: "status · log · alert" },
+      { key: "出力", value: "Prometheus /metrics" },
     ],
   },
   livePanel: {
     title: "127.0.0.1:9410 · Deployboard",
     liveBadge: "SSE · ライブ",
-    appTagline: "macOS launchd インベントリ — 自分のデプロイだけ",
+    appTagline: "自分の launchd service を管理する console",
     badges: {
       alerts: "16 オン · 2 オフ",
       inventory: "自前 16 · その他 1 · ノイズ 528",
@@ -77,6 +80,14 @@ export const content: Content = {
     streamType: "text/event-stream",
     push: "5秒ごとに配信",
     ...heroPanel,
+  },
+  preview: {
+    views: "ビュー",
+    metrics: "/metrics",
+    telegram: "Telegram",
+    hint: "自前・その他・ノイズをクリック。それから /metrics と Telegram 通知。",
+    noiseHeading: "ノイズ",
+    noiseNote: "528 件のうちの数件。初期表示には出さない。",
   },
   why: {
     eyebrow: "理由",
@@ -306,8 +317,8 @@ export const content: Content = {
   },
   cta: {
     eyebrow: "インストール",
-    headline: "Mac が何を動かしているか、把握する。",
-    body: "brew install --cask francistse/tap/deployboard — Homebrew がなければリリース用インストーラを curl。自分のものを伝える設定ファイルは一つ。",
+    headline: "Launchd に dashboard はない。",
+    body: "自分の launchd service をブラウザで管理する console で、Prometheus metrics も出す。",
     command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {

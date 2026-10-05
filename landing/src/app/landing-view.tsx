@@ -7,6 +7,7 @@ import { Card, StatusDot } from "@/kit";
 import { colors, type ServiceStatus } from "@/kit/tokens";
 import { cn } from "@/kit/utils/cn";
 import type { Content, Locale, PanelJob } from "@/content";
+import { noiseJobs } from "@/content/fixtures";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -136,51 +137,46 @@ function GridBackdrop() {
 function Hero() {
   const { content } = useSite();
   return (
-    <section className="relative z-10 mx-auto w-full max-w-[1180px] px-6 pb-24 pt-20 lg:pt-28">
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-10">
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="lg:col-span-6"
-        >
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/45">
-            {content.hero.eyebrow}
-          </p>
-          <h1 className="mt-5 text-[clamp(2.25rem,4.4vw,3.5rem)] font-semibold leading-[1.05] tracking-[-0.02em]">
-            {content.hero.headline[0]}
-            <br />
-            <span className="text-[#67E8F9]">{content.hero.headline[1]}</span>
-          </h1>
-          <p className="mt-6 max-w-[58ch] text-[15.5px] leading-[1.65] text-white/65">
-            {content.hero.body}
-          </p>
+    <section id="preview" className="relative z-10 mx-auto w-full max-w-[1180px] px-6 pb-24 pt-16 lg:pt-24">
+      <motion.div variants={fadeUp} initial="hidden" animate="show" className="max-w-[46rem]">
+        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/45">
+          {content.hero.eyebrow}
+        </p>
+        <h1 className="mt-5 text-[clamp(2.1rem,4.2vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.02em]">
+          <span className="block">{content.hero.headline[0]}</span>
+          <span className="mt-4 block text-[clamp(1.15rem,2vw,1.45rem)] font-medium leading-snug text-[#67E8F9]">
+            {content.hero.headline[1]}
+          </span>
+        </h1>
+        <p className="mt-5 max-w-[46rem] text-[15.5px] leading-[1.65] text-white/65">
+          {content.hero.body}
+        </p>
 
-          <div className="mt-8 max-w-[460px]">
-            <InstallSnippet command={content.brand.installCommand} />
-          </div>
+        <div className="mt-7 max-w-[520px]">
+          <InstallSnippet command={content.brand.installCommand} />
+        </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-white/55">
-            {content.hero.metaRow.map((m) => (
-              <span key={m.key} className="flex items-center gap-2">
-                <span className="h-1 w-1 rounded-full bg-white/30" />
-                <span className="font-mono text-white/40">{m.key}</span>
-                <span>{m.value}</span>
-              </span>
-            ))}
-          </div>
-        </motion.div>
+        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-white/55">
+          {content.hero.metaRow.map((m) => (
+            <span key={m.key} className="flex items-center gap-2">
+              <span className="h-1 w-1 rounded-full bg-white/30" />
+              <span className="font-mono text-white/40">{m.key}</span>
+              <span>{m.value}</span>
+            </span>
+          ))}
+        </div>
+      </motion.div>
 
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          transition={{ delay: 0.08 }}
-          className="lg:col-span-6"
-        >
-          <JobConsole />
-        </motion.div>
-      </div>
+      <motion.div
+        variants={fadeUp}
+        initial="hidden"
+        animate="show"
+        transition={{ delay: 0.08 }}
+        className="mt-10"
+      >
+        <JobConsole />
+        <p className="mt-3 font-mono text-[11px] text-white/40">{content.preview.hint}</p>
+      </motion.div>
     </section>
   );
 }
@@ -246,29 +242,32 @@ const PANEL_STATUS_ORDER: readonly ServiceStatus[] = [
   "disabled",
 ];
 
+type PreviewScene = "views" | "metrics" | "telegram";
+type PreviewCategory = "all" | "ours" | "noise" | "other";
+
 /**
- * The hero panel is a *preview of the product dashboard*, so it copies the
- * dashboard's chrome rather than inventing its own: window bar, product header
- * with badges, search bar, the two filter rows (category chips over a status-tab
- * row), then the real job table with per-group header rows and category +
- * provenance badges on every label.
+ * The hero panel is a live preview of the product, not a screenshot.
+ * Three scenes match the three things worth seeing: Ours / Other / Noise,
+ * the Prometheus `/metrics` scrape, and a Telegram alert. Category chips
+ * filter the job table the way the dashboard does. Default is Ours.
  *
- * Machine facts come from `content/fixtures.ts`, spread into `livePanel` by each
- * locale; the copy around them is localised, so this component reads every
- * string off `livePanel` rather than hardcoding it.
+ * Machine facts come from `content/fixtures.ts`; every string is localised.
  */
 function JobConsole() {
   const { content } = useSite();
   const p = content.livePanel;
+  const preview = content.preview;
+  const [scene, setScene] = useState<PreviewScene>("views");
+  const [category, setCategory] = useState<PreviewCategory>("ours");
 
-  const categories = [
-    { key: "all", label: p.filters.all, count: p.counts.categories.all, active: true, hidden: false, locked: false },
-    { key: "ours", label: p.filters.ours, count: p.counts.categories.ours, active: false, hidden: false, locked: false },
-    { key: "noise", label: p.filters.noise, count: p.counts.categories.noise, active: false, hidden: true, locked: true },
-    { key: "other", label: p.filters.other, count: p.counts.categories.other, active: false, hidden: false, locked: false },
+  const categories: { key: PreviewCategory; label: string; count: number; hidden: boolean }[] = [
+    { key: "all", label: p.filters.all, count: p.counts.categories.all, hidden: false },
+    { key: "ours", label: p.filters.ours, count: p.counts.categories.ours, hidden: false },
+    { key: "noise", label: p.filters.noise, count: p.counts.categories.noise, hidden: category !== "noise" },
+    { key: "other", label: p.filters.other, count: p.counts.categories.other, hidden: false },
   ];
   const statusTabs = [
-    { key: "all", label: p.filters.all, count: p.counts.statuses.all, active: true },
+    { key: "all", label: p.filters.all, count: p.counts.statuses.all, active: category !== "noise" },
     ...PANEL_STATUS_ORDER.map((status) => ({
       key: status as string,
       label: content.statusMeta[status],
@@ -282,185 +281,348 @@ function JobConsole() {
     { icon: "✎", text: p.badges.writeMode, tone: "write" },
     { icon: "", text: p.badges.url, tone: "url" },
   ];
+  const scenes: { key: PreviewScene; label: string }[] = [
+    { key: "views", label: preview.views },
+    { key: "metrics", label: preview.metrics },
+    { key: "telegram", label: preview.telegram },
+  ];
+  const groups = p.groups
+    .map((g) => ({
+      ...g,
+      rows: g.rows.filter((row) => category === "all" || row.category === category),
+    }))
+    .filter((g) => g.rows.length > 0);
+  const noiseOn = category === "noise";
 
   return (
-    <Card tone="raised" className="overflow-hidden border-white/[0.08] p-0">
-      {/* Browser-window chrome */}
-      <header className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
-        <div className="flex items-center gap-2.5">
-          <span className="flex gap-1">
+    <Card
+      tone="raised"
+      data-preview=""
+      data-scene={scene}
+      data-category={category}
+      className="overflow-hidden border-white/[0.08] p-0"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex shrink-0 gap-1">
             <span className="h-2 w-2 rounded-full bg-[#FF5F57]" />
             <span className="h-2 w-2 rounded-full bg-[#FEBC2E]" />
             <span className="h-2 w-2 rounded-full bg-[#28C840]" />
           </span>
-          <span className="font-mono text-[11px] text-white/55">{p.title}</span>
+          <span className="truncate font-mono text-[11px] text-white/55">{p.title}</span>
         </div>
-        <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#34D399]">
-          <span className="relative inline-flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#34D399] opacity-70" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#34D399]" />
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex rounded-md border border-white/10 bg-[#03040A] p-0.5" role="tablist" aria-label={preview.views}>
+            {scenes.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                role="tab"
+                aria-selected={scene === s.key}
+                data-scene-tab={s.key}
+                onClick={() => setScene(s.key)}
+                className={cn(
+                  "rounded px-2 py-0.5 font-mono text-[10px] transition-colors",
+                  scene === s.key ? "bg-[#22D3EE]/15 text-[#67E8F9]" : "text-white/45 hover:text-white/80",
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <span className="hidden items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#34D399] sm:flex">
+            <span className="relative inline-flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#34D399] opacity-70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#34D399]" />
+            </span>
+            {p.liveBadge}
           </span>
-          {p.liveBadge}
-        </span>
+        </div>
       </header>
 
-      {/* Product header: title + tagline, theme switch + Settings, badges */}
-      <div className="border-b border-white/[0.05] px-4 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="truncate text-[15px] font-semibold tracking-tight text-white/95">
-              {content.brand.name}
-            </div>
-            <div className="truncate text-[11px] text-white/45">{p.appTagline}</div>
-          </div>
-          <div className="flex shrink-0 items-center gap-0.5">
-            {["System", "Light", "Dark"].map((label) => (
-              <span
-                key={label}
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 font-mono text-[9px]",
-                  label === "Dark" ? "bg-white/[0.06] text-white/70" : "text-white/35",
-                )}
-              >
-                {label}
-              </span>
-            ))}
-            <span className="ml-1 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[9.5px] text-white/60">
-              ⚙ {content.ui.settings}
-            </span>
-          </div>
-        </div>
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          {badges.map((b) => (
-            <span
-              key={b.text}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9.5px]",
-                BADGE_TONE[b.tone],
-              )}
-            >
-              {b.icon ? <span aria-hidden>{b.icon}</span> : null}
-              {b.text}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Search bar */}
-      <div className="border-b border-white/[0.05] px-4 py-2">
-        <div className="flex items-center gap-2 rounded-md border border-white/[0.08] bg-[#03040A] px-2.5 py-1.5">
-          <span aria-hidden className="text-[11px] text-white/30">⌕</span>
-          <span className="text-[11px] text-white/35">{p.searchPlaceholder}</span>
-        </div>
-      </div>
-
-      {/* Filter bar: category chips + noise toggle, then a status-tab row */}
-      <div className="flex flex-col gap-2 border-b border-white/[0.05] px-4 py-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <div className="flex flex-wrap gap-1.5">
-            {categories.map((c) => (
-              <span
-                key={c.key}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px]",
-                  c.active
-                    ? "border-[#22D3EE]/40 bg-[#22D3EE]/10 font-semibold text-[#67E8F9]"
-                    : "border-white/10 text-white/55",
-                  c.locked && "border-dashed opacity-60",
-                )}
-              >
-                {c.label}
-                <span className={c.active ? "text-[#67E8F9]/70" : "text-white/35"}>
-                  {c.count}
-                  {c.hidden ? p.hiddenSuffix : ""}
+      {scene === "views" ? (
+        <>
+          <div className="border-b border-white/[0.05] px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-[15px] font-semibold tracking-tight text-white/95">
+                  {content.brand.name}
+                </div>
+                <div className="truncate text-[11px] text-white/45">{p.appTagline}</div>
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
+                {["System", "Light", "Dark"].map((label) => (
+                  <span
+                    key={label}
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 font-mono text-[9px]",
+                      label === "Dark" ? "bg-white/[0.06] text-white/70" : "text-white/35",
+                    )}
+                  >
+                    {label}
+                  </span>
+                ))}
+                <span className="ml-1 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[9.5px] text-white/60">
+                  ⚙ {content.ui.settings}
                 </span>
-              </span>
-            ))}
-          </div>
-          <span className="flex items-center gap-1.5 text-[10px] text-white/40">
-            {p.noiseToggle}
-            <span className="relative inline-flex h-[14px] w-[26px] rounded-full border border-white/10 bg-white/[0.06]">
-              <span className="absolute left-[2px] top-[2px] h-[8px] w-[8px] rounded-full bg-white/50" />
-            </span>
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          {statusTabs.map((t) => (
-            <span
-              key={t.key}
-              className={cn(
-                "border-b-2 pb-0.5 font-mono text-[10.5px]",
-                t.active ? "font-semibold text-white/90" : "text-white/40",
-              )}
-              style={{ borderBottomColor: t.active ? TAB_COLOR[t.key] : "transparent" }}
-            >
-              {t.label} ({t.count})
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Job table — the product's real columns */}
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b border-white/[0.06]">
-            <th className="w-7 px-3 py-1.5" />
-            {p.columns.map((c, i) => (
-              <th
-                key={c}
-                className={cn(
-                  "whitespace-nowrap px-2 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-white/40",
-                  i === p.columns.length - 1 && "pr-3 text-right",
-                )}
-              >
-                {c}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {p.groups.map((g) => (
-            <Fragment key={g.key}>
-              <tr className="border-b border-white/[0.05] bg-white/[0.025]">
-                <td colSpan={p.columns.length + 1} className="px-3 py-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-medium text-white/85">
-                      {p.groupNames[g.key]}
-                    </span>
-                    <span className="flex items-center gap-2 font-mono text-[9.5px] text-white/45">
-                      <span className="flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colors.status.running.fg }} />
-                        {g.health.running}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colors.status.error.fg }} />
-                        {g.health.error}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colors.status.disabled.fg }} />
-                        {g.health.disabled}
-                      </span>
-                      <span className="text-white/30">
-                        {g.total} {p.jobsSuffix}
-                      </span>
-                    </span>
-                  </div>
-                </td>
-              </tr>
-              {g.rows.map((job) => (
-                <DemoRow key={job.label} job={job} panel={p} />
+              </div>
+            </div>
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              {badges.map((b) => (
+                <span
+                  key={b.text}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9.5px]",
+                    BADGE_TONE[b.tone],
+                  )}
+                >
+                  {b.icon ? <span aria-hidden>{b.icon}</span> : null}
+                  {b.text}
+                </span>
               ))}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
+            </div>
+          </div>
 
-      <footer className="flex items-center justify-between border-t border-white/[0.06] bg-white/[0.015] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
-        <span>{p.events}</span>
-        <span>{p.streamType}</span>
-        <span>{p.push}</span>
-      </footer>
+          <div className="border-b border-white/[0.05] px-4 py-2">
+            <div className="flex items-center gap-2 rounded-md border border-white/[0.08] bg-[#03040A] px-2.5 py-1.5">
+              <span aria-hidden className="text-[11px] text-white/30">⌕</span>
+              <span className="text-[11px] text-white/35">{p.searchPlaceholder}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 border-b border-white/[0.05] px-4 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label={preview.views}>
+                {categories.map((c) => {
+                  const active = category === c.key;
+                  return (
+                    <button
+                      key={c.key}
+                      type="button"
+                      aria-pressed={active}
+                      data-category-tab={c.key}
+                      onClick={() => setCategory(c.key)}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] transition-colors",
+                        active
+                          ? "border-[#22D3EE]/40 bg-[#22D3EE]/10 font-semibold text-[#67E8F9]"
+                          : "border-white/10 text-white/55 hover:text-white/80",
+                        c.key === "noise" && !active && "border-dashed opacity-80",
+                      )}
+                    >
+                      {c.label}
+                      <span className={active ? "text-[#67E8F9]/70" : "text-white/35"}>
+                        {c.count}
+                        {c.hidden ? p.hiddenSuffix : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                aria-pressed={noiseOn}
+                onClick={() => setCategory(noiseOn ? "ours" : "noise")}
+                className="flex items-center gap-1.5 text-[10px] text-white/40 hover:text-white/70"
+              >
+                {p.noiseToggle}
+                <span
+                  className={cn(
+                    "relative inline-flex h-[14px] w-[26px] rounded-full border",
+                    noiseOn ? "border-[#22D3EE]/40 bg-[#22D3EE]/20" : "border-white/10 bg-white/[0.06]",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-[2px] h-[8px] w-[8px] rounded-full",
+                      noiseOn ? "left-[14px] bg-[#67E8F9]" : "left-[2px] bg-white/50",
+                    )}
+                  />
+                </span>
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              {statusTabs.map((t) => (
+                <span
+                  key={t.key}
+                  className={cn(
+                    "border-b-2 pb-0.5 font-mono text-[10.5px]",
+                    t.active ? "font-semibold text-white/90" : "text-white/40",
+                  )}
+                  style={{ borderBottomColor: t.active ? TAB_COLOR[t.key] : "transparent" }}
+                >
+                  {t.label} ({t.count})
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            {category === "noise" ? (
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="w-7 px-3 py-1.5" />
+                    {p.columns.map((c, i) => (
+                      <th
+                        key={c}
+                        className={cn(
+                          "whitespace-nowrap px-2 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-white/40",
+                          i === p.columns.length - 1 && "pr-3 text-right",
+                        )}
+                      >
+                        {c}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-white/[0.05] bg-white/[0.025]">
+                    <td colSpan={p.columns.length + 1} className="px-3 py-1.5">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span className="text-[11px] font-medium text-white/70">{preview.noiseHeading}</span>
+                        <span className="font-mono text-[10px] text-white/35">{preview.noiseNote}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {noiseJobs.map((job) => (
+                    <DemoRow key={job.label} job={job} panel={p} muted />
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <JobTable panel={p} groups={groups} />
+            )}
+          </div>
+
+          <footer className="flex items-center justify-between border-t border-white/[0.06] bg-white/[0.015] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+            <span>{p.events}</span>
+            <span>{p.streamType}</span>
+            <span>{p.push}</span>
+          </footer>
+        </>
+      ) : null}
+
+      {scene === "metrics" ? (
+        <div className="min-h-[280px] bg-[#03040A]">
+          <div className="border-b border-white/[0.06] px-4 py-2 font-mono text-[10.5px] uppercase tracking-[0.16em] text-white/40">
+            {content.metrics.sampleLabel}
+          </div>
+          <pre className="overflow-x-auto px-4 py-3.5 font-mono text-[12px] leading-[1.75] text-white/75">
+            {content.metrics.sample.map((line) => (
+              <div key={line} className={cn(line.startsWith("#") && "text-white/35")}>
+                {line}
+              </div>
+            ))}
+          </pre>
+          <div className="border-t border-white/[0.06] px-4 py-2 font-mono text-[10.5px] uppercase tracking-[0.16em] text-white/40">
+            {content.metrics.queryLabel}
+          </div>
+          <pre className="overflow-x-auto px-4 py-3 font-mono text-[12px] leading-[1.75] text-[#C4B5FD]">
+            {content.metrics.query.map((line) => (
+              <div key={line} className={cn(line.startsWith("#") && "text-white/35")}>
+                {line}
+              </div>
+            ))}
+          </pre>
+        </div>
+      ) : null}
+
+      {scene === "telegram" ? (
+        <div className="min-h-[280px] bg-[#05070D] p-5">
+          <div className="mx-auto max-w-[440px] rounded-xl border border-white/[0.08] bg-[#17212B] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#229ED9] font-mono text-[13px] text-white">
+                ✈
+              </span>
+              <div>
+                <div className="text-[13px] font-medium text-white/90">{content.alerts.channel}</div>
+                <div className="font-mono text-[10px] text-white/40">{content.brand.name}</div>
+              </div>
+            </div>
+            <div className="mt-3 space-y-0.5 rounded-lg bg-[#0E1621] px-3 py-2.5 font-mono text-[12.5px] leading-[1.7] text-white/85">
+              {content.alerts.message.map((line) => (
+                <div key={line}>{line}</div>
+              ))}
+            </div>
+          </div>
+          <ul className="mx-auto mt-4 flex max-w-[440px] flex-wrap gap-1.5">
+            {content.alerts.rules.map((rule) => (
+              <li
+                key={rule.kind}
+                className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[10px] text-white/55"
+              >
+                {rule.kind}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Card>
+  );
+}
+
+function JobTable({
+  panel,
+  groups,
+}: {
+  panel: Content["livePanel"];
+  groups: readonly { key: string; health: { running: number; error: number; disabled: number }; total: number; rows: readonly PanelJob[] }[];
+}) {
+  return (
+    <table className="w-full border-collapse text-left">
+      <thead>
+        <tr className="border-b border-white/[0.06]">
+          <th className="w-7 px-3 py-1.5" />
+          {panel.columns.map((c, i) => (
+            <th
+              key={c}
+              className={cn(
+                "whitespace-nowrap px-2 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-white/40",
+                i === panel.columns.length - 1 && "pr-3 text-right",
+              )}
+            >
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {groups.map((g) => (
+          <Fragment key={g.key}>
+            <tr className="border-b border-white/[0.05] bg-white/[0.025]">
+              <td colSpan={panel.columns.length + 1} className="px-3 py-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-medium text-white/85">
+                    {panel.groupNames[g.key as keyof typeof panel.groupNames]}
+                  </span>
+                  <span className="flex items-center gap-2 font-mono text-[9.5px] text-white/45">
+                    <span className="flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colors.status.running.fg }} />
+                      {g.health.running}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colors.status.error.fg }} />
+                      {g.health.error}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: colors.status.disabled.fg }} />
+                      {g.health.disabled}
+                    </span>
+                    <span className="text-white/30">
+                      {g.total} {panel.jobsSuffix}
+                    </span>
+                  </span>
+                </div>
+              </td>
+            </tr>
+            {g.rows.map((job) => (
+              <DemoRow key={job.label} job={job} panel={panel} />
+            ))}
+          </Fragment>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -468,9 +630,11 @@ function JobConsole() {
 function DemoRow({
   job,
   panel,
+  muted = false,
 }: {
   job: PanelJob;
   panel: Content["livePanel"];
+  muted?: boolean;
 }) {
   const action =
     job.status === "running"
@@ -479,7 +643,7 @@ function DemoRow({
         ? panel.actions.enable
         : panel.actions.start;
   return (
-    <tr className="border-b border-white/[0.03] transition-colors hover:bg-white/[0.02]">
+    <tr className={cn("border-b border-white/[0.03] transition-colors hover:bg-white/[0.02]", muted && "opacity-60")}>
       <td className="px-3 py-1.5 align-middle">
         <StatusDot status={job.status} pulse={job.status === "running"} />
       </td>

@@ -200,6 +200,18 @@ export interface Content {
     push: string;
     groups: readonly [PanelGroup, PanelGroup, PanelGroup];
   };
+  /**
+   * The hero preview's own controls. The three scenes are the things a reader
+   * has to see, not read: the inventory views, `/metrics`, and a Telegram alert.
+   */
+  preview: {
+    views: string;
+    metrics: string;
+    telegram: string;
+    hint: string;
+    noiseHeading: string;
+    noiseNote: string;
+  };
   why: {
     eyebrow: string;
     headline: string;

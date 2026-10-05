@@ -9,8 +9,8 @@
 class Deployboard < Formula
   desc "Deployboard: launchd inventory + Prometheus metrics + Telegram alerts"
   homepage "https://github.com/francistse/deployboard"
-  url "https://github.com/francistse/deployboard/archive/refs/tags/v0.0.2.tar.gz"
-  version "0.0.2"
+  url "https://github.com/francistse/deployboard/archive/refs/tags/v0.0.3.tar.gz"
+  version "0.0.3"
   license "MIT"
   head "https://github.com/francistse/deployboard.git", branch: "main"
 

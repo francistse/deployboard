@@ -3,21 +3,21 @@ import { REPO, heroPanel, logStream, metricsQuery, metricsSample } from "./fixtu
 
 export const content: Content = {
   meta: {
-    title: "Deployboard — 看你自己的 launchd 部署，而不是 500 个系统任务",
+    title: "Deployboard — Launchd 没有 dashboard",
     description:
-      "给你真正部署过的 launchd 任务用的本地仪表盘：什么在运行、什么坏了、什么是你有意停用的，再加上 Prometheus 指标，以及可按应用开关的 Telegram 告警。只绑定 127.0.0.1；没有云，没有遥测。",
+      "Launchd 没有 dashboard。这是在浏览器管理自己的 launchd services 的 console，同时输出 Prometheus metrics。",
   },
   brand: {
     name: "Deployboard",
     mark: "DB",
-    tagline: "你的 launchd 部署，一目了然",
+    tagline: "在浏览器管理自己的 launchd services",
     installCommand: "brew install --cask francistse/tap/deployboard",
     launchCommand: "deployboard",
     github: "github.com/francistse/deployboard",
     githubUrl: REPO,
     changelogUrl: REPO + "/blob/main/CHANGELOG.md",
     upstreamUrl: "https://github.com/RoboZephyr/launch-pilot",
-    version: "v0.0.2",
+    version: "v0.0.3",
     license: "MIT",
   },
   nav: [
@@ -37,21 +37,24 @@ export const content: Content = {
     settings: "设置",
   },
   hero: {
-    eyebrow: "v0.0.2 · MIT · macOS · fork 自 launch-pilot",
-    headline: ["你的部署，", "不是 545 个系统任务。"],
-    body: "你的 Mac 跑着几百个 LaunchAgents——Dropbox、Chrome、Spotify，还有各种更新程序。Deployboard 只显示你真正部署过的那些，告诉你哪些在运行、哪些坏了、哪些是你有意停用的。然后把这一切变成 Prometheus 指标和 Telegram 告警。",
+    eyebrow: "macOS · 一条命令 · 127.0.0.1",
+    headline: [
+      "Launchd 没有 dashboard。",
+      "这是在浏览器管理自己的 launchd services 的 console，同时输出 Prometheus metrics。",
+    ],
+    body: "一条命令装好。浏览器里看状态、日志、告警。",
     primaryCta: { label: "一条命令安装", href: "#install" },
     secondaryCta: { label: "阅读源码", href: REPO },
     metaRow: [
-      { key: "运行位置", value: "本机 · 仅 127.0.0.1" },
-      { key: "显示", value: "你的应用 · 系统噪音已隐藏" },
-      { key: "暴露", value: "/metrics · /api/jobs · SSE" },
+      { key: "安装", value: "一条命令" },
+      { key: "浏览器", value: "状态 · 日志 · 告警" },
+      { key: "输出", value: "Prometheus /metrics" },
     ],
   },
   livePanel: {
     title: "127.0.0.1:9410 · Deployboard",
     liveBadge: "SSE · 实时",
-    appTagline: "macOS launchd 清单 — 只显示你自己部署的",
+    appTagline: "在浏览器管理自己的 launchd services",
     badges: {
       alerts: "16 开 · 2 关",
       inventory: "我的 16 · 其他 1 · 噪音 528",
@@ -77,6 +80,14 @@ export const content: Content = {
     streamType: "text/event-stream",
     push: "每 5 秒推送",
     ...heroPanel,
+  },
+  preview: {
+    views: "视图",
+    metrics: "/metrics",
+    telegram: "Telegram",
+    hint: "点「我的」、「其他」或「噪音」。然后看 /metrics 和 Telegram 告警。",
+    noiseHeading: "噪音",
+    noiseNote: "528 个里的几个。默认视图不会出现。",
   },
   why: {
     eyebrow: "为什么",
@@ -306,8 +317,8 @@ export const content: Content = {
   },
   cta: {
     eyebrow: "安装",
-    headline: "弄清楚你的 Mac 在跑什么。",
-    body: "brew install --cask francistse/tap/deployboard —— 没有 Homebrew 就 curl 发布安装脚本。一个配置文件标出哪些是你的。",
+    headline: "Launchd 没有 dashboard。",
+    body: "这是在浏览器管理自己的 launchd services 的 console，同时输出 Prometheus metrics。",
     command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {

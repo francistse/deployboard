@@ -2,9 +2,9 @@
 
 > **产品档案**：跨 iteration 累积的产品事实记录。由 forge release 成功后自动追加，feature mode 启动时读此档案建立上下文。
 
-**Last updated**: 2026-10-05 (differentiation roadmap Phases 1–4 documented)
+**Last updated**: 2026-10-05 (v0.0.3 release)
 **Slug**: `deployboard`
-**Current version**: v0.0.2
+**Current version**: v0.0.3
 **Repo**: https://github.com/francistse/deployboard
 **Roadmap**: [`ROADMAP.md`](ROADMAP.md) — committed future work (desired state, health contracts + incidents, project-native registration, agent MCP)
 
