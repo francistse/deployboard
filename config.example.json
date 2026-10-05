@@ -44,5 +44,9 @@
     "groups": [
       {"name": "Example App", "status": "running", "probe_port": 8080}
     ]
-  }
+  },
+  "contracts": [
+    {"group": "Example App", "http": {"port": 8080, "path": "/health", "expect_status": 200}},
+    {"group": "Infra", "tcp": {"port": 5432}}
+  ]
 }

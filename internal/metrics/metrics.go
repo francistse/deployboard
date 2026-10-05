@@ -43,6 +43,16 @@ type Input struct {
 	Duration time.Duration
 	// DriftByReason counts open drifts keyed by reason (status, disabled, …).
 	DriftByReason map[string]int
+	// ContractOK is 1/0 per contract identity (group|match|kind).
+	Contracts []ContractMetric
+}
+
+// ContractMetric is one health-contract sample.
+type ContractMetric struct {
+	Group string
+	Match string
+	Kind  string
+	OK    bool
 }
 
 // EscapeLabel escapes a Prometheus label value: backslash, double quote, newline.
@@ -134,6 +144,23 @@ func Render(in Input) string {
 				float64(in.DriftByReason[reason]),
 			})
 		}
+	}
+
+	for _, c := range in.Contracts {
+		labels := []string{"kind", c.Kind}
+		if c.Group != "" {
+			labels = append(labels, "group", c.Group)
+		}
+		if c.Match != "" {
+			labels = append(labels, "match", c.Match)
+		}
+		samples = append(samples, sample{
+			"deployboard_contract_ok",
+			"1 when a health contract currently passes.",
+			"gauge",
+			labels,
+			boolVal(c.OK),
+		})
 	}
 
 	// Process-level series.

@@ -116,6 +116,16 @@ export function postDriftAlign(label, action) {
   });
 }
 
+/** GET health contracts. */
+export function fetchContracts() {
+  return apiFetch('/api/contracts');
+}
+
+/** GET incident timeline. */
+export function fetchIncidents(hours = 24) {
+  return apiFetch(`/api/incidents?hours=${encodeURIComponent(hours)}`);
+}
+
 /** GET one job (used to re-check what an action actually did). */
 export function fetchJob(label) {
   return apiFetch(`/api/jobs/${encodeURIComponent(label)}`);

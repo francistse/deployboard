@@ -25,6 +25,7 @@ series tells you "started churning at 03:10".
 | `deployboard_job_probe_latency_seconds` | gauge | `label`, `port` | probe latency |
 | `deployboard_job_desired_up` | gauge | `label`, `category`, `group` | 1 when a desired rule expects the job running (omitted when no rule) |
 | `deployboard_drift_total` | gauge | `reason` | count of open Ours drifts by reason (`status`, `disabled`, `restart_rate`, `probe`) |
+| `deployboard_contract_ok` | gauge | `kind`, `group`/`match` | 1 when a health contract currently passes |
 
 Notes:
 

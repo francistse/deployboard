@@ -97,9 +97,52 @@ type ForkDeps struct {
 	Alerts    AlertsControl
 	Telegram  TelegramSettings
 	Drift     DriftControl
+	Contracts ContractReporter
+	Incidents IncidentReporter
 	// Jobs restarts the dashboard after a group reload that includes this
 	// process. Nil skips that step.
 	Jobs JobService
+}
+
+// ContractEntry is one health-contract result.
+type ContractEntry struct {
+	Group   string  `json:"group,omitempty"`
+	Match   string  `json:"match,omitempty"`
+	Kind    string  `json:"kind"`
+	OK      bool    `json:"ok"`
+	Detail  string  `json:"detail,omitempty"`
+	Latency float64 `json:"latencySeconds,omitempty"`
+}
+
+// ContractReporter lists current contract results.
+type ContractReporter interface {
+	ListContracts() ([]ContractEntry, error)
+}
+
+// IncidentEntry is one timeline event for the UI.
+type IncidentEntry struct {
+	At     string `json:"at"`
+	Kind   string `json:"kind"`
+	Label  string `json:"label,omitempty"`
+	Group  string `json:"group,omitempty"`
+	Detail string `json:"detail,omitempty"`
+	Hash   string `json:"hash,omitempty"`
+	Count  int    `json:"count,omitempty"`
+}
+
+// FingerprintGroup aggregates identical crash fingerprints.
+type FingerprintGroup struct {
+	Hash   string `json:"hash"`
+	Label  string `json:"label"`
+	Count  int    `json:"count"`
+	First  string `json:"first"`
+	Last   string `json:"last"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// IncidentReporter lists recent Ours incidents.
+type IncidentReporter interface {
+	ListIncidents(hours float64) ([]IncidentEntry, []FingerprintGroup, error)
 }
 
 // DriftEntry is one Ours job out of desired state (API shape).
@@ -586,6 +629,55 @@ func driftAlignHandler(deps ForkDeps) http.HandlerFunc {
 			status = http.StatusConflict
 		}
 		writeJSON(w, status, res)
+	}
+}
+
+// contractsHandler implements GET /api/contracts.
+func contractsHandler(deps ForkDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.Contracts == nil {
+			writeError(w, http.StatusNotFound, "contracts not enabled")
+			return
+		}
+		list, err := deps.Contracts.ListContracts()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if list == nil {
+			list = []ContractEntry{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"contracts": list, "count": len(list)})
+	}
+}
+
+// incidentsHandler implements GET /api/incidents?hours=N.
+func incidentsHandler(deps ForkDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.Incidents == nil {
+			writeError(w, http.StatusNotFound, "incidents not enabled")
+			return
+		}
+		hours := 24.0
+		if v := r.URL.Query().Get("hours"); v != "" {
+			if n, err := strconv.ParseFloat(v, 64); err == nil && n > 0 {
+				hours = n
+			}
+		}
+		events, fingerprints, err := deps.Incidents.ListIncidents(hours)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if events == nil {
+			events = []IncidentEntry{}
+		}
+		if fingerprints == nil {
+			fingerprints = []FingerprintGroup{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"events": events, "fingerprints": fingerprints, "hours": hours,
+		})
 	}
 }
 

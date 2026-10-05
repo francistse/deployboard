@@ -1,7 +1,7 @@
 import { html, render } from 'htm/preact';
 import { useEffect, useState, useCallback } from 'preact/hooks';
 import { connectSSE } from './lib/sse.js';
-import { fetchAlerts, fetchInventory, fetchAccess, fetchDrift, postDriftAlign, postGroupAction } from './lib/api.js';
+import { fetchAlerts, fetchInventory, fetchAccess, fetchDrift, postDriftAlign, postGroupAction, fetchContracts, fetchIncidents } from './lib/api.js';
 import { resolveInitialLocale, setLocale, t } from './lib/i18n.js';
 import { SearchBar } from './components/search-bar.js';
 import { FilterBar } from './components/filter-bar.js';
@@ -155,6 +155,9 @@ function App() {
   const [inventorySummary, setInventorySummary] = useState({ ours: 0, noise: 0, other: 0 });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drifts, setDrifts] = useState([]);
+  const [contractsByGroup, setContractsByGroup] = useState({});
+  const [incidentsOpen, setIncidentsOpen] = useState(false);
+  const [incidents, setIncidents] = useState({ events: [], fingerprints: [] });
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -196,15 +199,40 @@ function App() {
     }
   }, []);
 
+  const loadContracts = useCallback(async () => {
+    try {
+      const data = await fetchContracts();
+      const map = {};
+      for (const c of (data.contracts || [])) {
+        const key = c.group || 'Ungrouped';
+        if (!map[key]) map[key] = [];
+        map[key].push(c);
+      }
+      setContractsByGroup(map);
+    } catch (e) {
+      setContractsByGroup({});
+    }
+  }, []);
+
+  const loadIncidents = useCallback(async () => {
+    try {
+      const data = await fetchIncidents(24);
+      setIncidents({ events: data.events || [], fingerprints: data.fingerprints || [] });
+    } catch (e) {
+      setIncidents({ events: [], fingerprints: [] });
+    }
+  }, []);
+
   useEffect(() => {
     const es = connectSSE();
     loadAlerts();
     loadInventory();
     loadAccess();
     loadDrift();
-    const id = setInterval(loadDrift, 5000);
+    loadContracts();
+    const id = setInterval(() => { loadDrift(); loadContracts(); }, 5000);
     return () => { es.close(); clearInterval(id); };
-  }, [loadAlerts, loadInventory, loadAccess, loadDrift]);
+  }, [loadAlerts, loadInventory, loadAccess, loadDrift, loadContracts]);
 
   return html`
     <header>
@@ -216,6 +244,7 @@ function App() {
         <div class="header-actions">
           <${LangSwitch} className="lang-switch--header" />
           <${ThemeToggle} />
+          <button class="btn btn--sm" onClick=${() => { setIncidentsOpen(true); loadIncidents(); }} title=${t('incident.title')}>⏱ ${t('incident.title')}</button>
           <button class="btn btn--sm" onClick=${() => setSettingsOpen(true)} title=${t('settings.title')}>⚙ ${t('settings.title')}</button>
         </div>
       </div>
@@ -255,8 +284,43 @@ function App() {
       <${StormBanner} />
       <${SearchBar} />
       <${FilterBar} />
-      <${JobTable} showAlerts=${showAlerts} />
+      <${JobTable} showAlerts=${showAlerts} contractsByGroup=${contractsByGroup} />
     </main>
+    ${incidentsOpen && html`
+      <aside class="incident-drawer" role="dialog" aria-label=${t('incident.title')}>
+        <div class="incident-drawer__head">
+          <strong>${t('incident.title')}</strong>
+          <button class="btn btn--sm btn--outline" onClick=${() => setIncidentsOpen(false)}>${t('incident.close')}</button>
+        </div>
+        ${incidents.fingerprints.length > 0 && html`
+          <div class="incident-drawer__section">
+            <h3>${t('incident.fingerprints')}</h3>
+            <ul>
+              ${incidents.fingerprints.slice(0, 20).map((f) => html`
+                <li key=${f.hash + f.label}>
+                  <code>${f.label}</code> ×${f.count}
+                  <span class="muted">${f.detail || f.hash}</span>
+                </li>
+              `)}
+            </ul>
+          </div>
+        `}
+        <div class="incident-drawer__section">
+          <h3>${t('incident.timeline')}</h3>
+          <ul>
+            ${(incidents.events || []).slice(0, 50).map((e, i) => html`
+              <li key=${i}>
+                <span class="muted">${e.at}</span>
+                <strong>${e.kind}</strong>
+                ${e.label ? html`<code>${e.label}</code>` : null}
+                <span>${e.detail || ''}</span>
+              </li>
+            `)}
+            ${(!incidents.events || incidents.events.length === 0) ? html`<li class="muted">${t('incident.empty')}</li>` : null}
+          </ul>
+        </div>
+      </aside>
+    `}
     <${SettingsPanel}
       open=${settingsOpen}
       onClose=${() => { setSettingsOpen(false); loadAlerts(); loadAccess(); }}

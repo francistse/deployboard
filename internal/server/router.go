@@ -114,6 +114,12 @@ func NewRouterWithFork(svc JobService, diag *diagnose.Engine, webFS fs.FS, deps 
 		}
 		mux.HandleFunc("POST /api/drift/align", align)
 	}
+	if deps.Contracts != nil {
+		mux.HandleFunc("GET /api/contracts", contractsHandler(deps))
+	}
+	if deps.Incidents != nil {
+		mux.HandleFunc("GET /api/incidents", incidentsHandler(deps))
+	}
 
 	// Static files — embedded frontend
 	mux.Handle("GET /", http.FileServerFS(webFS))

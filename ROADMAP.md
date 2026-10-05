@@ -76,7 +76,7 @@ glance, and Prometheus can alert on drift — not only `job_up`.
 
 ## Phase 2 — Health contracts + local incident timeline
 
-**Status:** planned
+**Status:** shipped
 
 **Gap:** probes today are HTTP-only and ephemeral; Apple exposes no job history. Competitors show
 logs or live state; none give an **ops timeline for YOUR stack**.
