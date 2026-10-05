@@ -106,6 +106,20 @@ func NewRouterWithFork(svc JobService, diag *diagnose.Engine, webFS fs.FS, deps 
 		mux.HandleFunc("DELETE /api/settings/telegram", telegramForgetHandler(deps))
 		mux.HandleFunc("POST /api/settings/telegram/test", telegramSettingsTestHandler(deps))
 	}
+	if deps.Drift != nil {
+		mux.HandleFunc("GET /api/drift", driftListHandler(deps))
+		align := driftAlignHandler(deps)
+		if deps.Access != nil {
+			align = readOnlyGuard(deps.Access, align)
+		}
+		mux.HandleFunc("POST /api/drift/align", align)
+	}
+	if deps.Contracts != nil {
+		mux.HandleFunc("GET /api/contracts", contractsHandler(deps))
+	}
+	if deps.Incidents != nil {
+		mux.HandleFunc("GET /api/incidents", incidentsHandler(deps))
+	}
 
 	// Static files — embedded frontend
 	mux.Handle("GET /", http.FileServerFS(webFS))

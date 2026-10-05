@@ -96,9 +96,81 @@ type ForkDeps struct {
 	Metrics   MetricsSource
 	Alerts    AlertsControl
 	Telegram  TelegramSettings
+	Drift     DriftControl
+	Contracts ContractReporter
+	Incidents IncidentReporter
 	// Jobs restarts the dashboard after a group reload that includes this
 	// process. Nil skips that step.
 	Jobs JobService
+}
+
+// ContractEntry is one health-contract result.
+type ContractEntry struct {
+	Group   string  `json:"group,omitempty"`
+	Match   string  `json:"match,omitempty"`
+	Kind    string  `json:"kind"`
+	OK      bool    `json:"ok"`
+	Detail  string  `json:"detail,omitempty"`
+	Latency float64 `json:"latencySeconds,omitempty"`
+}
+
+// ContractReporter lists current contract results.
+type ContractReporter interface {
+	ListContracts() ([]ContractEntry, error)
+}
+
+// IncidentEntry is one timeline event for the UI.
+type IncidentEntry struct {
+	At     string `json:"at"`
+	Kind   string `json:"kind"`
+	Label  string `json:"label,omitempty"`
+	Group  string `json:"group,omitempty"`
+	Detail string `json:"detail,omitempty"`
+	Hash   string `json:"hash,omitempty"`
+	Count  int    `json:"count,omitempty"`
+}
+
+// FingerprintGroup aggregates identical crash fingerprints.
+type FingerprintGroup struct {
+	Hash   string `json:"hash"`
+	Label  string `json:"label"`
+	Count  int    `json:"count"`
+	First  string `json:"first"`
+	Last   string `json:"last"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// IncidentReporter lists recent Ours incidents.
+type IncidentReporter interface {
+	ListIncidents(hours float64) ([]IncidentEntry, []FingerprintGroup, error)
+}
+
+// DriftEntry is one Ours job out of desired state (API shape).
+type DriftEntry struct {
+	Label          string   `json:"label"`
+	Group          string   `json:"group,omitempty"`
+	ExpectedStatus string   `json:"expectedStatus"`
+	ActualStatus   string   `json:"actualStatus"`
+	Disabled       bool     `json:"disabled"`
+	Reasons        []string `json:"reasons"`
+	AlignAction    string   `json:"alignAction,omitempty"`
+	Source         string   `json:"source,omitempty"`
+}
+
+// DriftAlignResult is the outcome of POST /api/drift/align.
+type DriftAlignResult struct {
+	Label    string         `json:"label"`
+	Action   string         `json:"action"`
+	OK       bool           `json:"ok"`
+	Note     string         `json:"note,omitempty"`
+	Error    string         `json:"error,omitempty"`
+	Verified map[string]any `json:"verified,omitempty"`
+}
+
+// DriftControl exposes desired-state drift listing and align.
+type DriftControl interface {
+	ListDrift() ([]DriftEntry, error)
+	AlignDrift(label, action string) (DriftAlignResult, error)
 }
 
 // classifyHandler implements POST /api/inventory/classify — the UI's
@@ -506,6 +578,106 @@ func telegramSettingsTestHandler(deps ForkDeps) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "telegramStatus": status})
+	}
+}
+
+// driftListHandler implements GET /api/drift.
+func driftListHandler(deps ForkDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.Drift == nil {
+			writeError(w, http.StatusNotFound, "drift not enabled")
+			return
+		}
+		list, err := deps.Drift.ListDrift()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if list == nil {
+			list = []DriftEntry{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"drifts": list, "count": len(list)})
+	}
+}
+
+// driftAlignHandler implements POST /api/drift/align.
+func driftAlignHandler(deps ForkDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.Drift == nil {
+			writeError(w, http.StatusNotFound, "drift not enabled")
+			return
+		}
+		var body struct {
+			Label  string `json:"label"`
+			Action string `json:"action"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+		if !launchd.ValidLabel(body.Label) {
+			writeError(w, http.StatusBadRequest, "invalid label format")
+			return
+		}
+		res, err := deps.Drift.AlignDrift(body.Label, body.Action)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		status := http.StatusOK
+		if !res.OK {
+			status = http.StatusConflict
+		}
+		writeJSON(w, status, res)
+	}
+}
+
+// contractsHandler implements GET /api/contracts.
+func contractsHandler(deps ForkDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.Contracts == nil {
+			writeError(w, http.StatusNotFound, "contracts not enabled")
+			return
+		}
+		list, err := deps.Contracts.ListContracts()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if list == nil {
+			list = []ContractEntry{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"contracts": list, "count": len(list)})
+	}
+}
+
+// incidentsHandler implements GET /api/incidents?hours=N.
+func incidentsHandler(deps ForkDeps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.Incidents == nil {
+			writeError(w, http.StatusNotFound, "incidents not enabled")
+			return
+		}
+		hours := 24.0
+		if v := r.URL.Query().Get("hours"); v != "" {
+			if n, err := strconv.ParseFloat(v, 64); err == nil && n > 0 {
+				hours = n
+			}
+		}
+		events, fingerprints, err := deps.Incidents.ListIncidents(hours)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if events == nil {
+			events = []IncidentEntry{}
+		}
+		if fingerprints == nil {
+			fingerprints = []FingerprintGroup{}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"events": events, "fingerprints": fingerprints, "hours": hours,
+		})
 	}
 }
 

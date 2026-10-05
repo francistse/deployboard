@@ -13,11 +13,13 @@ import (
 type Kind string
 
 const (
-	KindError       Kind = "error"
-	KindOffline     Kind = "offline"
-	KindUnreachable Kind = "unreachable"
-	KindRunStorm    Kind = "run_storm"
-	KindRecovery    Kind = "recovery"
+	KindError         Kind = "error"
+	KindOffline       Kind = "offline"
+	KindUnreachable   Kind = "unreachable"
+	KindRunStorm      Kind = "run_storm"
+	KindRecovery      Kind = "recovery"
+	KindDriftOpened   Kind = "drift_opened"
+	KindDriftCleared  Kind = "drift_cleared"
 )
 
 // JobState is one job's observed state for one evaluation pass.
@@ -33,6 +35,8 @@ type JobState struct {
 	ProbeOK      bool
 	HasProbe     bool
 	LogPath      string
+	// DriftOpen is true when desired-state evaluation reports this job as drifted.
+	DriftOpen bool
 }
 
 // Entry is one recorded send (in-memory ring buffer, no payload storage).
@@ -198,6 +202,7 @@ func (e *Engine) Evaluate(ctx context.Context, jobs []JobState) []Entry {
 			// Keep the fingerprint fresh so re-enabling does not fire a stale alert.
 			prev.LastStatus = j.Status
 			prev.LastRuns = j.Runs
+			prev.DriftOpen = j.DriftOpen
 			if j.HasProbe {
 				ok := j.ProbeOK
 				prev.LastProbeOK = &ok
@@ -208,7 +213,8 @@ func (e *Engine) Evaluate(ctx context.Context, jobs []JobState) []Entry {
 
 		kind, text, fire := classify(cfg, j, prev, now, quiet)
 		if fire {
-			if kind != KindRecovery && prev.LastSentAt > 0 && now.Unix()-prev.LastSentAt < int64(cooldown.Seconds()) {
+			// Drift cleared and recovery are never cooldown-suppressed.
+			if kind != KindRecovery && kind != KindDriftCleared && prev.LastSentAt > 0 && now.Unix()-prev.LastSentAt < int64(cooldown.Seconds()) {
 				fire = false
 			}
 		}
@@ -234,6 +240,7 @@ func (e *Engine) Evaluate(ctx context.Context, jobs []JobState) []Entry {
 
 		prev.LastStatus = j.Status
 		prev.LastRuns = j.Runs
+		prev.DriftOpen = j.DriftOpen
 		if j.HasProbe {
 			ok := j.ProbeOK
 			prev.LastProbeOK = &ok
@@ -245,6 +252,18 @@ func (e *Engine) Evaluate(ctx context.Context, jobs []JobState) []Entry {
 
 // classify decides whether this pass is a transition worth sending.
 func classify(cfg Config, j JobState, prev LabelState, now time.Time, quiet bool) (Kind, string, bool) {
+	// Desired-state drift transitions (Ours inventory only in practice).
+	if j.DriftOpen && !prev.DriftOpen {
+		if quiet {
+			return KindDriftOpened, "", false
+		}
+		return KindDriftOpened, formatAlert(KindDriftOpened, j, now), true
+	}
+	if !j.DriftOpen && prev.DriftOpen {
+		// Drift cleared is never suppressed by quiet hours (like recovery).
+		return KindDriftCleared, formatAlert(KindDriftCleared, j, now), true
+	}
+
 	// Probe flips take precedence: a listening port that stops answering is the
 	// symptom users actually notice.
 	if j.HasProbe && prev.LastProbeOK != nil && *prev.LastProbeOK && !j.ProbeOK {
@@ -293,12 +312,14 @@ func classify(cfg Config, j JobState, prev LabelState, now time.Time, quiet bool
 func formatAlert(kind Kind, j JobState, now time.Time) string {
 	icon := "🔴"
 	switch kind {
-	case KindRecovery:
+	case KindRecovery, KindDriftCleared:
 		icon = "🟢"
 	case KindRunStorm:
 		icon = "🌀"
 	case KindUnreachable:
 		icon = "🔌"
+	case KindDriftOpened:
+		icon = "📐"
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s %s\n", icon, strings.ToUpper(string(kind)))
@@ -316,6 +337,12 @@ func formatAlert(kind Kind, j JobState, now time.Time) string {
 	}
 	if j.HasProbe && !j.ProbeOK {
 		fmt.Fprintf(&b, "\nport not answering")
+	}
+	if kind == KindDriftOpened {
+		fmt.Fprintf(&b, "\ndesired state drifted")
+	}
+	if kind == KindDriftCleared {
+		fmt.Fprintf(&b, "\ndesired state restored")
 	}
 	if j.LogPath != "" {
 		fmt.Fprintf(&b, "\nlog: %s", j.LogPath)

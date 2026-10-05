@@ -17,11 +17,16 @@ import (
 	"time"
 
 	"github.com/A404coder/deployboard/internal/alerts"
+	"github.com/A404coder/deployboard/internal/contract"
+	"github.com/A404coder/deployboard/internal/cron"
+	"github.com/A404coder/deployboard/internal/desired"
 	"github.com/A404coder/deployboard/internal/diagnose"
+	"github.com/A404coder/deployboard/internal/incident"
 	"github.com/A404coder/deployboard/internal/inventory"
 	"github.com/A404coder/deployboard/internal/launchd"
 	"github.com/A404coder/deployboard/internal/metrics"
 	"github.com/A404coder/deployboard/internal/probe"
+	"github.com/A404coder/deployboard/internal/project"
 	"github.com/A404coder/deployboard/internal/retire"
 	"github.com/A404coder/deployboard/internal/server"
 	"github.com/A404coder/deployboard/web"
@@ -33,13 +38,15 @@ var Version = "dev"
 // FileConfig is the optional config.json shape. Missing fields fall back to the
 // built-in defaults, so a partial file can never silently disable a feature.
 type FileConfig struct {
-	Port      int              `json:"port"`
-	ReadOnly  bool             `json:"read_only"`
-	ProbeTTL  int              `json:"probe_ttl_seconds"`
-	NoProbe   bool             `json:"no_probe"`
-	PrintTTL  int              `json:"print_ttl_seconds"`
-	Inventory inventory.Config `json:"inventory"`
-	Alerts    alerts.Config    `json:"alerts"`
+	Port       int              `json:"port"`
+	ReadOnly   bool             `json:"read_only"`
+	ProbeTTL   int              `json:"probe_ttl_seconds"`
+	NoProbe    bool             `json:"no_probe"`
+	PrintTTL   int              `json:"print_ttl_seconds"`
+	Inventory  inventory.Config `json:"inventory"`
+	Alerts     alerts.Config    `json:"alerts"`
+	Desired    desired.Config   `json:"desired"`
+	Contracts  contract.Config  `json:"contracts"`
 }
 
 // Config holds the effective CLI + file configuration.
@@ -62,6 +69,8 @@ type Config struct {
 	SelfLabel string
 	Inventory inventory.Config
 	Alerts    alerts.Config
+	Desired   desired.Config
+	Contracts contract.Config
 }
 
 // Addr returns the listen address string. The dashboard is localhost-only by
@@ -123,6 +132,8 @@ func parseFlags(args []string) (cfg Config, versionRequested bool, err error) {
 	}
 	cfg.Inventory = fileCfg.Inventory
 	cfg.Alerts = fileCfg.Alerts
+	cfg.Desired = fileCfg.Desired
+	cfg.Contracts = fileCfg.Contracts
 	if fileCfg.Port > 0 && cfg.Port == 0 {
 		cfg.Port = fileCfg.Port
 	}
@@ -229,6 +240,8 @@ type configStore struct {
 	engine *alerts.Engine
 	// access receives read_only edits found in the file (the watcher path).
 	access *accessController
+	// app receives desired-state reloads from the watcher.
+	app *appState
 }
 
 // adoptAccess forwards a read_only value read from disk to the access
@@ -327,6 +340,12 @@ func (s *configStore) watch(ctx context.Context, every time.Duration) {
 			if fileCfg, err := loadFileConfig(s.path); err == nil {
 				s.pushTelegram(alertConfig(fileCfg.Alerts).Telegram)
 				s.adoptAccess(fileCfg.ReadOnly)
+				if s.app != nil {
+					s.app.baseInv = fileCfg.Inventory
+					s.app.baseDes = fileCfg.Desired
+					s.app.baseCon = fileCfg.Contracts
+					s.app.refreshProjects(fileCfg.Inventory, fileCfg.Desired, fileCfg.Contracts)
+				}
 			}
 			fmt.Fprintf(os.Stderr, "deployboard: config.json reloaded (%s)\n", s.path)
 		}
@@ -550,6 +569,164 @@ type appState struct {
 	retire  *retire.Log
 	jobs    *recordingService
 	version string
+
+	desiredMu sync.RWMutex
+	desired   desired.Config
+
+	contractMu sync.RWMutex
+	contracts  contract.Config
+
+	incidents *incident.Store
+	prevJobs  map[string]string // label → last status for incident status transitions
+
+	cronMu    sync.RWMutex
+	cronMatch []string
+
+	// Base config from config.json (before project overlays).
+	baseInv inventory.Config
+	baseDes desired.Config
+	baseCon contract.Config
+}
+
+// setDesired replaces the in-memory desired-state config (hot reload).
+func (a *appState) setDesired(c desired.Config) {
+	a.desiredMu.Lock()
+	a.desired = c
+	a.desiredMu.Unlock()
+}
+
+// desiredConfig returns a snapshot of the desired-state config.
+func (a *appState) desiredConfig() desired.Config {
+	a.desiredMu.RLock()
+	defer a.desiredMu.RUnlock()
+	return a.desired
+}
+
+func (a *appState) setContracts(c contract.Config) {
+	a.contractMu.Lock()
+	a.contracts = c
+	a.contractMu.Unlock()
+}
+
+func (a *appState) contractsConfig() contract.Config {
+	a.contractMu.RLock()
+	defer a.contractMu.RUnlock()
+	return a.contracts
+}
+
+func (a *appState) setCronMatch(patterns []string) {
+	a.cronMu.Lock()
+	a.cronMatch = append([]string{}, patterns...)
+	a.cronMu.Unlock()
+}
+
+func (a *appState) cronPatterns() []string {
+	a.cronMu.RLock()
+	defer a.cronMu.RUnlock()
+	return append([]string{}, a.cronMatch...)
+}
+
+// refreshProjects scans derive_roots for deployboard.yaml/json and overlays
+// inventory, desired, contracts, and cron_match (project wins).
+func (a *appState) refreshProjects(baseInv inventory.Config, baseDes desired.Config, baseCon contract.Config) {
+	m, err := project.Scan(baseInv.DeriveRoots)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "deployboard: project scan:", err)
+		m = project.Merge{}
+	}
+	inv := project.ApplyInventory(baseInv, m)
+	if a.store != nil {
+		a.store.mu.Lock()
+		a.store.apply(inv)
+		a.store.mu.Unlock()
+	} else if a.svc != nil {
+		a.svc.SetEnrichment(inventory.New(inv), 15*time.Second)
+	}
+	a.setDesired(project.ApplyDesired(baseDes, m))
+	a.setContracts(project.ApplyContracts(baseCon, m))
+	a.setCronMatch(m.CronMatch)
+}
+
+func (a *appState) cronCompanions() []launchd.Job {
+	patterns := a.cronPatterns()
+	if len(patterns) == 0 {
+		return nil
+	}
+	entries := cron.ParseLines(cron.LoadUserCrontab(), patterns)
+	out := make([]launchd.Job, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, launchd.Job{
+			Label:            e.Label,
+			Status:           launchd.StatusScheduled,
+			Category:         string(inventory.CategoryOurs),
+			CategorySource:   "cron",
+			Group:            "Cron",
+			CompanionSource:  "cron",
+			CompanionCommand: e.Command,
+			Program:          e.Command,
+		})
+	}
+	return out
+}
+
+// jobFacade appends cron companions onto ListJobs and refuses mutating cron labels.
+type jobFacade struct {
+	inner *recordingService
+	app   *appState
+}
+
+func (f jobFacade) ListJobs() ([]launchd.Job, error) {
+	jobs, err := f.inner.ListJobs()
+	if err != nil {
+		return nil, err
+	}
+	return append(jobs, f.app.cronCompanions()...), nil
+}
+func (f jobFacade) GetJob(label string) (*launchd.Job, error) {
+	for _, c := range f.app.cronCompanions() {
+		if c.Label == label {
+			j := c
+			return &j, nil
+		}
+	}
+	return f.inner.GetJob(label)
+}
+func (f jobFacade) Reload(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Reload(label)
+}
+func (f jobFacade) RestartSelf() error { return f.inner.RestartSelf() }
+func (f jobFacade) Start(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Start(label)
+}
+func (f jobFacade) Stop(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Stop(label)
+}
+func (f jobFacade) Disable(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Disable(label)
+}
+func (f jobFacade) Enable(label string) error {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return fmt.Errorf("cron companions are read-only")
+	}
+	return f.inner.Enable(label)
+}
+func (f jobFacade) ReadLogs(label string, lines int) (*launchd.LogOutput, error) {
+	if strings.HasPrefix(label, "cron.companion.") {
+		return &launchd.LogOutput{Label: label, Message: "cron companions have no launchd logs"}, nil
+	}
+	return f.inner.ReadLogs(label, lines)
 }
 
 // recordingService decorates the launchd service so a retirement triggered from
@@ -741,18 +918,46 @@ func (a *appState) MetricsInput() metrics.Input {
 	if err != nil {
 		return metrics.Input{Version: a.version}
 	}
+	cfg := a.desiredConfig()
+	driftCounts := map[string]int{}
 	in := metrics.Input{Version: a.version, Jobs: make([]metrics.JobMetric, 0, len(jobs))}
+	views := a.jobViews(jobs)
+	for _, d := range cfg.Evaluate(views) {
+		for _, r := range d.Reasons {
+			driftCounts[string(r)]++
+		}
+	}
+	in.DriftByReason = driftCounts
+
+	cfgContracts := a.contractsConfig()
+	invCfg := inventory.Config{}
+	if a.store != nil {
+		invCfg = a.store.Current()
+	}
+	cJobs := make([]contract.JobView, 0, len(jobs))
+	for _, j := range jobs {
+		cJobs = append(cJobs, contract.JobView{Label: j.Label, Category: j.Category, Group: j.Group})
+	}
+	for _, r := range cfgContracts.Evaluate(context.Background(), cJobs, invCfg.DeriveRoots, nil) {
+		in.Contracts = append(in.Contracts, metrics.ContractMetric{
+			Group: r.Group, Match: r.Match, Kind: r.Kind, OK: r.OK,
+		})
+	}
+
 	for _, j := range jobs {
 		m := metrics.JobMetric{
 			Label: j.Label, Category: j.Category, Group: j.Group, Status: string(j.Status),
 			Runs: j.Runs, HasExit: j.HasExit, LastExitCode: j.LastExitStatus,
 			Disabled: j.Disabled, AlertEnabled: a.alerts != nil && a.alertEnabled(j),
 		}
+		if exp, ok := cfg.Resolve(j.Label, j.Group); ok && j.Category == string(inventory.CategoryOurs) {
+			m.HasDesired = true
+			m.DesiredUp = desired.DesiredUp(exp)
+		}
 		if a.prober != nil && j.Category != string(inventory.CategoryNoise) {
+			probed := false
 			for _, res := range a.prober.ProbeArgs(j.ProgramArgs) {
-				_ = res
-				// One port per series keeps cardinality predictable; the first
-				// inferred port is the service's own listen port.
+				probed = true
 				m.HasProbe = true
 				m.ProbePort = res.Port
 				m.ProbeOK = res.Reachable
@@ -761,7 +966,7 @@ func (a *appState) MetricsInput() metrics.Input {
 				in.Jobs = append(in.Jobs, m)
 				m.HasProbe = false
 			}
-			if !m.HasProbe {
+			if !probed {
 				in.Jobs = append(in.Jobs, m)
 			}
 			continue
@@ -824,6 +1029,10 @@ func (a *appState) jobStates() []alerts.JobState {
 	if err != nil {
 		return nil
 	}
+	driftSet := map[string]bool{}
+	for _, d := range a.desiredConfig().Evaluate(a.jobViews(jobs)) {
+		driftSet[d.Label] = true
+	}
 	out := make([]alerts.JobState, 0, len(jobs))
 	for _, j := range jobs {
 		if j.Category == string(inventory.CategoryNoise) {
@@ -832,7 +1041,7 @@ func (a *appState) jobStates() []alerts.JobState {
 		js := alerts.JobState{
 			Label: j.Label, Category: j.Category, Group: j.Group, Status: string(j.Status),
 			Disabled: j.Disabled, Runs: j.Runs, HasExit: j.HasExit, LastExitCode: j.LastExitStatus,
-			LogPath: j.StandardOutPath,
+			LogPath: j.StandardOutPath, DriftOpen: driftSet[j.Label],
 		}
 		if a.prober != nil {
 			for _, r := range a.prober.ProbeArgs(j.ProgramArgs) {
@@ -843,6 +1052,251 @@ func (a *appState) jobStates() []alerts.JobState {
 		out = append(out, js)
 	}
 	return out
+}
+
+// jobViews builds desired.JobView rows from launchd jobs (with probes).
+func (a *appState) jobViews(jobs []launchd.Job) []desired.JobView {
+	out := make([]desired.JobView, 0, len(jobs))
+	for _, j := range jobs {
+		v := desired.JobView{
+			Label: j.Label, Category: j.Category, Group: j.Group,
+			Status: string(j.Status), Disabled: j.Disabled,
+			RestartsRecent: j.RestartsRecent,
+		}
+		if a.prober != nil && j.Category != string(inventory.CategoryNoise) {
+			for _, r := range a.prober.ProbeArgs(j.ProgramArgs) {
+				v.HasProbe = true
+				v.ProbePort = r.Port
+				v.ProbeOK = v.ProbeOK || r.Reachable
+			}
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// ListDrift implements server.DriftControl.
+func (a *appState) ListDrift() ([]server.DriftEntry, error) {
+	jobs, err := a.svc.ListJobs()
+	if err != nil {
+		return nil, err
+	}
+	raw := a.desiredConfig().Evaluate(a.jobViews(jobs))
+	out := make([]server.DriftEntry, 0, len(raw))
+	for _, d := range raw {
+		reasons := make([]string, len(d.Reasons))
+		for i, r := range d.Reasons {
+			reasons[i] = string(r)
+		}
+		out = append(out, server.DriftEntry{
+			Label: d.Label, Group: d.Group,
+			ExpectedStatus: d.ExpectedStatus, ActualStatus: d.ActualStatus,
+			Disabled: d.Disabled, Reasons: reasons,
+			AlignAction: d.AlignAction, Source: d.Source,
+		})
+	}
+	return out, nil
+}
+
+// AlignDrift implements server.DriftControl.
+func (a *appState) AlignDrift(label, action string) (server.DriftAlignResult, error) {
+	jobs, err := a.svc.ListJobs()
+	if err != nil {
+		return server.DriftAlignResult{}, err
+	}
+	views := a.jobViews(jobs)
+	suggested, drift, _ := a.desiredConfig().AlignActionFor(views, label)
+	if drift == nil {
+		return server.DriftAlignResult{}, fmt.Errorf("no open drift for %s", label)
+	}
+	if action == "" {
+		action = suggested
+	}
+	if action == "" {
+		return server.DriftAlignResult{}, fmt.Errorf("no align action for %s", label)
+	}
+	switch action {
+	case "start", "stop", "disable", "enable", "reload":
+	default:
+		return server.DriftAlignResult{}, fmt.Errorf("action must be start|stop|disable|enable|reload, got %q", action)
+	}
+	job, err := a.jobs.GetJob(label)
+	if err != nil {
+		return server.DriftAlignResult{Label: label, Action: action, OK: false, Error: err.Error()}, nil
+	}
+	if err := applyJobAction(a.jobs, *job, action); err != nil {
+		return server.DriftAlignResult{Label: label, Action: action, OK: false, Error: err.Error()}, nil
+	}
+	verified := verifyActionLocal(a.jobs, label, action)
+	ok, _ := verified["ok"].(bool)
+	return server.DriftAlignResult{
+		Label: label, Action: action, OK: ok,
+		Note: actionNote(*job, action), Verified: verified,
+	}, nil
+}
+
+// verifyActionLocal mirrors server.verifyAction without exporting it.
+func verifyActionLocal(svc server.JobService, label, action string) map[string]any {
+	job, err := svc.GetJob(label)
+	if err != nil {
+		return map[string]any{"ok": false, "error": err.Error()}
+	}
+	out := map[string]any{
+		"status": string(job.Status), "pid": job.PID, "disabled": job.Disabled, "keepAlive": job.KeepAlive,
+	}
+	ok := false
+	switch action {
+	case "stop":
+		ok = job.PID == 0
+	case "start", "reload":
+		ok = job.PID > 0 || job.Status == launchd.StatusScheduled || job.Status == launchd.StatusCompleted
+	case "disable":
+		ok = job.Disabled
+	case "enable":
+		ok = !job.Disabled
+	}
+	out["ok"] = ok
+	return out
+}
+
+// ListContracts implements server.ContractReporter.
+func (a *appState) ListContracts() ([]server.ContractEntry, error) {
+	jobs, err := a.svc.ListJobs()
+	if err != nil {
+		return nil, err
+	}
+	invCfg := inventory.Config{}
+	if a.store != nil {
+		invCfg = a.store.Current()
+	}
+	cJobs := make([]contract.JobView, 0, len(jobs))
+	for _, j := range jobs {
+		cJobs = append(cJobs, contract.JobView{Label: j.Label, Category: j.Category, Group: j.Group})
+	}
+	raw := a.contractsConfig().Evaluate(context.Background(), cJobs, invCfg.DeriveRoots, nil)
+	out := make([]server.ContractEntry, 0, len(raw))
+	for _, r := range raw {
+		out = append(out, server.ContractEntry{
+			Group: r.Group, Match: r.Match, Kind: r.Kind, OK: r.OK, Detail: r.Detail, Latency: r.Latency,
+		})
+	}
+	return out, nil
+}
+
+// ListIncidents implements server.IncidentReporter.
+func (a *appState) ListIncidents(hours float64) ([]server.IncidentEntry, []server.FingerprintGroup, error) {
+	if a.incidents == nil {
+		return nil, nil, nil
+	}
+	if hours <= 0 {
+		hours = 24
+	}
+	since := time.Now().UTC().Add(-time.Duration(hours * float64(time.Hour)))
+	evs, err := a.incidents.Since(since)
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make([]server.IncidentEntry, 0, len(evs))
+	for i := len(evs) - 1; i >= 0; i-- { // newest first
+		ev := evs[i]
+		out = append(out, server.IncidentEntry{
+			At: ev.At.Format(time.RFC3339), Kind: string(ev.Kind),
+			Label: ev.Label, Group: ev.Group, Detail: ev.Detail, Hash: ev.Hash, Count: ev.Count,
+		})
+	}
+	fg := incident.GroupByFingerprint(evs)
+	groups := make([]server.FingerprintGroup, 0, len(fg))
+	for _, g := range fg {
+		groups = append(groups, server.FingerprintGroup{
+			Hash: g.Hash, Label: g.Label, Count: g.Count,
+			First: g.First.Format(time.RFC3339), Last: g.Last.Format(time.RFC3339), Detail: g.Detail,
+		})
+	}
+	return out, groups, nil
+}
+
+// recordIncidents writes status/contract/fingerprint events for Ours jobs.
+// Drift lines are emitted only when drift newly opens (not every poll).
+func (a *appState) recordIncidents(jobs []launchd.Job) {
+	if a.incidents == nil {
+		return
+	}
+	if a.prevJobs == nil {
+		a.prevJobs = map[string]string{}
+	}
+	openDrift := map[string]bool{}
+	for _, d := range a.desiredConfig().Evaluate(a.jobViews(jobs)) {
+		openDrift[d.Label] = true
+		key := "drift:" + d.Label
+		if a.prevJobs[key] != "1" {
+			_ = a.incidents.Append(incident.Event{
+				Kind: incident.KindDrift, Label: d.Label, Group: d.Group,
+				Detail: d.ExpectedStatus + "→" + d.ActualStatus,
+			})
+			a.prevJobs[key] = "1"
+		}
+	}
+	for label, v := range a.prevJobs {
+		if !strings.HasPrefix(label, "drift:") {
+			continue
+		}
+		l := strings.TrimPrefix(label, "drift:")
+		if v == "1" && !openDrift[l] {
+			a.prevJobs[label] = "0"
+		}
+	}
+	for _, j := range jobs {
+		if j.Category != string(inventory.CategoryOurs) {
+			continue
+		}
+		prev, seen := a.prevJobs[j.Label]
+		cur := string(j.Status)
+		if seen && prev != cur {
+			_ = a.incidents.Append(incident.Event{
+				Kind: incident.KindStatus, Label: j.Label, Group: j.Group,
+				Detail: prev + "→" + cur,
+			})
+			if cur == string(launchd.StatusError) || j.RestartsRecent >= 5 {
+				tail := ""
+				if logs, err := a.svc.ReadLogs(j.Label, 40); err == nil && logs != nil {
+					if logs.Stderr != nil {
+						tail = *logs.Stderr
+					} else if logs.Stdout != nil {
+						tail = *logs.Stdout
+					}
+				}
+				hash := incident.Fingerprint(j.LastExitStatus, tail)
+				_ = a.incidents.Append(incident.Event{
+					Kind: incident.KindFingerprint, Label: j.Label, Group: j.Group,
+					Hash: hash, Detail: fmt.Sprintf("exit %d", j.LastExitStatus),
+				})
+			}
+		}
+		a.prevJobs[j.Label] = cur
+	}
+	invCfg := inventory.Config{}
+	if a.store != nil {
+		invCfg = a.store.Current()
+	}
+	cJobs := make([]contract.JobView, 0, len(jobs))
+	for _, j := range jobs {
+		cJobs = append(cJobs, contract.JobView{Label: j.Label, Category: j.Category, Group: j.Group})
+	}
+	for _, r := range a.contractsConfig().Evaluate(context.Background(), cJobs, invCfg.DeriveRoots, nil) {
+		key := "contract:" + r.Group + "|" + r.Match + "|" + r.Kind
+		if r.OK {
+			a.prevJobs[key] = "ok"
+			continue
+		}
+		if a.prevJobs[key] == "fail" {
+			continue
+		}
+		a.prevJobs[key] = "fail"
+		_ = a.incidents.Append(incident.Event{
+			Kind: incident.KindContract, Group: r.Group, Label: r.Match,
+			Detail: r.Kind + ": " + r.Detail,
+		})
+	}
 }
 
 // alertLoop evaluates transitions on an interval until ctx is done.
@@ -873,6 +1327,9 @@ func (a *appState) alertLoop(ctx context.Context, every time.Duration) {
 				a.alerts.Configure(conf)
 			}
 			a.alerts.Evaluate(ctx, a.jobStates())
+			if jobs, err := a.svc.ListJobs(); err == nil {
+				a.recordIncidents(jobs)
+			}
 			if err := a.state.Save(); err != nil {
 				fmt.Fprintln(os.Stderr, "deployboard: persist alerts state:", err)
 			}
@@ -969,12 +1426,20 @@ func newApp(cfg Config) (*appState, error) {
 		return nil, err
 	}
 	app := &appState{
-		svc:     svc,
-		state:   state,
-		alerts:  alerts.NewEngine(aCfg, state),
-		version: Version,
+		svc:       svc,
+		state:     state,
+		alerts:    alerts.NewEngine(aCfg, state),
+		version:   Version,
+		desired:   cfg.Desired,
+		contracts: cfg.Contracts,
+		incidents: incident.Open(""),
+		prevJobs:  map[string]string{},
+		baseInv:   cfg.Inventory,
+		baseDes:   cfg.Desired,
+		baseCon:   cfg.Contracts,
 	}
 	app.store = newConfigStore(cfg.ConfigPath, classifier.Config(), svc, cfg.PrintTTL, app.alerts)
+	app.store.app = app
 	app.access = newAccessController(cfg.ReadOnly, cfg.ReadOnlyFlag, app.store)
 	app.store.access = app.access
 	app.retire = retire.Open("")
@@ -984,6 +1449,7 @@ func newApp(cfg Config) (*appState, error) {
 	if !cfg.NoProbe {
 		app.prober = probe.New(cfg.ProbeTTL)
 	}
+	app.refreshProjects(cfg.Inventory, cfg.Desired, cfg.Contracts)
 	return app, nil
 }
 
@@ -991,6 +1457,7 @@ func newApp(cfg Config) (*appState, error) {
 // diagnose engine, fork routes, embedded frontend).
 func newServer(cfg Config, app *appState) (*http.Server, error) {
 	diag := &diagnose.Engine{}
+	facade := jobFacade{inner: app.jobs, app: app}
 	deps := server.ForkDeps{
 		Version:   Version,
 		Access:    app.access,
@@ -1000,14 +1467,24 @@ func newServer(cfg Config, app *appState) (*http.Server, error) {
 		Metrics:   app,
 		Alerts:    alertControl{app: app},
 		Telegram:  telegramSettings{app: app, store: app.store},
-		Jobs:      app.jobs,
+		Drift:     app,
+		Contracts: app,
+		Incidents: app,
+		Jobs:      facade,
 	}
-	router := server.NewRouterWithFork(app.jobs, diag, web.FS, deps)
+	router := server.NewRouterWithFork(facade, diag, web.FS, deps)
 	return &http.Server{Handler: router}, nil
 }
 
 func main() {
-	cfg, versionRequested, err := parseFlags(os.Args[1:])
+	args := os.Args[1:]
+	mcpMode := false
+	if len(args) > 0 && args[0] == "mcp" {
+		mcpMode = true
+		args = args[1:]
+	}
+
+	cfg, versionRequested, err := parseFlags(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "deployboard:", err)
 		os.Exit(1)
@@ -1021,6 +1498,14 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "deployboard: %v\n", err)
 		os.Exit(1)
+	}
+
+	if mcpMode {
+		if err := runMCP(app); err != nil {
+			fmt.Fprintf(os.Stderr, "deployboard mcp: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	srv, err := newServer(cfg, app)

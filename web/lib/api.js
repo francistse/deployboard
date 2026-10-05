@@ -100,6 +100,32 @@ export function postGroupAction(group, action) {
   });
 }
 
+/** GET desired-state drifts (Ours only). */
+export function fetchDrift() {
+  return apiFetch('/api/drift');
+}
+
+/** POST align one drifted job toward its desired state. */
+export function postDriftAlign(label, action) {
+  const body = { label };
+  if (action) body.action = action;
+  return apiFetch('/api/drift/align', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** GET health contracts. */
+export function fetchContracts() {
+  return apiFetch('/api/contracts');
+}
+
+/** GET incident timeline. */
+export function fetchIncidents(hours = 24) {
+  return apiFetch(`/api/incidents?hours=${encodeURIComponent(hours)}`);
+}
+
 /** GET one job (used to re-check what an action actually did). */
 export function fetchJob(label) {
   return apiFetch(`/api/jobs/${encodeURIComponent(label)}`);

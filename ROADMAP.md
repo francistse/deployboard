@@ -47,7 +47,7 @@ Product facts live in [`PRODUCT-STATE.md`](PRODUCT-STATE.md). This file is the c
 
 ## Phase 1 — Desired state for Ours
 
-**Status:** planned (highest leverage)
+**Status:** shipped
 
 **Gap:** every competitor shows live state. None treat “these labels must be running / disabled /
 probing” as a reconcile target (the systemd/Kubernetes pattern, absent from launchd GUIs).
@@ -65,7 +65,7 @@ probing” as a reconcile target (the systemd/Kubernetes pattern, absent from la
 
 ### Touchpoints
 
-`internal/inventory`, `cmd/deployboard`, `internal/server`, `web/`, `docs/`
+`internal/desired`, `cmd/deployboard`, `internal/server`, `web/`, `docs/`
 
 ### Success
 
@@ -76,7 +76,7 @@ glance, and Prometheus can alert on drift — not only `job_up`.
 
 ## Phase 2 — Health contracts + local incident timeline
 
-**Status:** planned
+**Status:** shipped
 
 **Gap:** probes today are HTTP-only and ephemeral; Apple exposes no job history. Competitors show
 logs or live state; none give an **ops timeline for YOUR stack**.
@@ -101,7 +101,7 @@ group since 03:00” without an external TSDB.
 
 ## Phase 3 — Project-native registration + brew/cron under Ours
 
-**Status:** planned
+**Status:** shipped
 
 **Gap:** inventory is global config. Competitors manage plists; brew-only menu apps ignore non-brew
 deploys; cron+launchd aggregators are usually read-only notes, not Deployboard.
@@ -124,7 +124,7 @@ cron companions show up beside LaunchAgents without drowning the default view in
 
 ## Phase 4 — Agent surface that inherits the wedge
 
-**Status:** planned
+**Status:** shipped
 
 **Gap:** tools like [launchd-audit](https://pypi.org/project/launchd-audit/) MCP audit *everything*.
 Deployboard should expose an MCP (stdio) that only speaks **Ours + desired + verified actions +

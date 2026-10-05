@@ -133,6 +133,8 @@ type LabelState struct {
 	LastSentAt int64  `json:"lastSentAt,omitempty"`
 	// LastProbeOK is nil until a probe has been observed for this label.
 	LastProbeOK *bool `json:"lastProbeOK,omitempty"`
+	// DriftOpen tracks whether the last evaluation saw an open desired-state drift.
+	DriftOpen bool `json:"driftOpen,omitempty"`
 	// Explicit is set only by a user toggle, so a recorded status never
 	// masquerades as a decision (see Engine.effectiveEnabled).
 	Explicit *bool `json:"explicit,omitempty"`

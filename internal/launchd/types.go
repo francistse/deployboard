@@ -96,6 +96,10 @@ type Job struct {
 	// Disable are still offered — they mean "keep it down" — but bootout of
 	// this label drops the page until the next login or a manual bootstrap.
 	Self bool `json:"self,omitempty"`
+	// CompanionSource is set for synthetic read-only rows (e.g. "cron").
+	CompanionSource string `json:"source,omitempty"`
+	// Program holds a display command for companions when not a real plist.
+	CompanionCommand string `json:"companionCommand,omitempty"`
 
 	// HasExit is true when `launchctl print` reported a last exit code.
 	// Omitted from JSON; metrics skip the series when it is false.

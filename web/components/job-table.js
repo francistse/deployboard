@@ -166,8 +166,9 @@ export function GroupActions({ group, jobs }) {
   `;
 }
 
-export function JobTable({ showAlerts }) {
+export function JobTable({ showAlerts, contractsByGroup }) {
   const list = filteredJobs.value;
+  const contracts = contractsByGroup || {};
 
   if (list.length === 0) {
     return html`<p class="job-table__empty">${t('table.empty')}</p>`;
@@ -188,7 +189,11 @@ export function JobTable({ showAlerts }) {
         </tr>
       </thead>
       <tbody>
-        ${grouped.map(([groupName, { jobs, counts }]) => html`
+        ${grouped.map(([groupName, { jobs, counts }]) => {
+          const cs = contracts[groupName] || [];
+          const fail = cs.filter((c) => !c.ok).length;
+          const pass = cs.filter((c) => c.ok).length;
+          return html`
           <tr class="job-table__group-header">
             <td colspan="6">
               <div class="group-header">
@@ -198,13 +203,16 @@ export function JobTable({ showAlerts }) {
                 <span class="health-dot health-dot--error" title=${t('status.error')}></span>${counts.error}
                 <span class="health-dot health-dot--disabled" title=${t('status.disabled')}></span>${counts.disabled}
                 <span class="group-count">${t('table.jobCount', { n: counts.total })}</span>
+                ${cs.length > 0 ? html`<span class=${`contract-pill ${fail ? 'contract-pill--fail' : 'contract-pill--ok'}`} title=${t('contract.hint')}>
+                  ${fail ? t('contract.fail', { n: fail }) : t('contract.ok', { n: pass })}
+                </span>` : null}
               </span>
               <${GroupActions} group=${groupName} jobs=${jobs} />
               </div>
             </td>
           </tr>
           ${jobs.map(job => html`<${JobRow} key=${job.label} job=${job} showAlerts=${showAlerts} />`)}
-        `)}
+        `})}
       </tbody>
     </table>
   `;
