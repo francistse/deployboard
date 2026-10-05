@@ -140,9 +140,22 @@ server is in, and the row buttons are disabled while it is read-only.
     "derive_roots": ["~/Projects", "~/Projects/demo", "~/Projects/infra"],
     "restart_warn_threshold": 50
   },
-  "alerts": {"enabled": true, "cooldown_seconds": 900, "run_storm_delta": 25}
+  "alerts": {"enabled": true, "cooldown_seconds": 900, "run_storm_delta": 25},
+  "desired": {
+    "jobs": [
+      {"match": "com.example.app.*", "status": "running", "max_restart_rate": 5}
+    ],
+    "groups": [
+      {"name": "Example App — UAT", "status": "running", "probe_port": 8080}
+    ]
+  }
 }
 ```
+
+**Desired state** (`desired`): declare what Ours jobs *should* be. Matching uses the same
+`path.Match` globs as inventory. Job rules win over group rules. Open drifts appear in the
+dashboard banner and at `GET /api/drift`; `POST /api/drift/align` runs start/stop/enable/disable
+behind the same verified-action + read-only gates. See [`ROADMAP.md`](../ROADMAP.md) Phase 1.
 
 **This file is hot-reloaded** — an edit is applied within ~2s, no restart. The UI's classify
 dropdown writes to it too (`POST /api/inventory/classify`), so pinning a new app never

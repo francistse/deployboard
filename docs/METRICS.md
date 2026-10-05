@@ -23,6 +23,8 @@ series tells you "started churning at 03:10".
 | `deployboard_job_probe_reachable` | gauge | `label`, `port` | 1 when the port answered |
 | `deployboard_job_probe_status` | gauge | `label`, `port` | HTTP status observed |
 | `deployboard_job_probe_latency_seconds` | gauge | `label`, `port` | probe latency |
+| `deployboard_job_desired_up` | gauge | `label`, `category`, `group` | 1 when a desired rule expects the job running (omitted when no rule) |
+| `deployboard_drift_total` | gauge | `reason` | count of open Ours drifts by reason (`status`, `disabled`, `restart_rate`, `probe`) |
 
 Notes:
 

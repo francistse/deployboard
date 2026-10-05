@@ -84,13 +84,15 @@ An explicit toggle always wins over the default.
 | port probe reachable → unreachable | `unreachable` |
 | `runs` increased by ≥ `run_storm_delta` (default 25) between sweeps | `run_storm` |
 | back to `running` / probe reachable again | `recovery` |
+| desired-state drift opens (Ours + `desired` rule) | `drift_opened` |
+| desired-state drift clears | `drift_cleared` |
 
 Delivery rules:
 
 - **Transition only** — the same `(label, status)` never fires twice in a row.
 - **Cooldown** `cooldown_seconds` (default 900) per label suppresses repeats.
-- **Quiet hours** `23:30–08:00` Asia/Hong_Kong suppress *new* alerts; **recovery is never
-  suppressed** and nothing is queued for later.
+- **Quiet hours** `23:30–08:00` Asia/Hong_Kong suppress *new* alerts; **recovery and
+  `drift_cleared` are never suppressed** and nothing is queued for later.
 - Messages are plain text (no `parse_mode`) — a launchd label or log path can never break
   delivery.
 - Only the HTTP status is logged; the token is redacted everywhere (`alerts.Redact`).

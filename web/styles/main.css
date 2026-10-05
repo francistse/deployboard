@@ -243,6 +243,8 @@ header p {
 }
 .badge--alerts { color: rgb(var(--ok)); }
 .badge--inventory { color: rgb(59 130 246); }
+.badge--drift { color: rgb(245 158 11); }
+.drift-banner { border-left-color: rgb(245 158 11); background: rgb(245 158 11 / 0.06); }
 /* Write access: colour carries the meaning — green can act, amber monitors,
    grey is locked by a start-up flag. */
 .badge--write { color: rgb(var(--ok)); }

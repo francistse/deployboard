@@ -35,5 +35,14 @@
       "keychain_account": "bot_token",
       "timeout_seconds": 10
     }
+  },
+  "desired": {
+    "jobs": [
+      {"match": "com.example.app.*", "status": "running", "max_restart_rate": 5},
+      {"match": "com.example.worker.*", "status": "disabled"}
+    ],
+    "groups": [
+      {"name": "Example App", "status": "running", "probe_port": 8080}
+    ]
   }
 }

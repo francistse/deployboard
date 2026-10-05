@@ -1,7 +1,7 @@
 import { html, render } from 'htm/preact';
 import { useEffect, useState, useCallback } from 'preact/hooks';
 import { connectSSE } from './lib/sse.js';
-import { fetchAlerts, fetchInventory, fetchAccess } from './lib/api.js';
+import { fetchAlerts, fetchInventory, fetchAccess, fetchDrift, postDriftAlign, postGroupAction } from './lib/api.js';
 import { resolveInitialLocale, setLocale, t } from './lib/i18n.js';
 import { SearchBar } from './components/search-bar.js';
 import { FilterBar } from './components/filter-bar.js';
@@ -12,7 +12,6 @@ import { ThemeToggle } from './components/theme-toggle.js';
 import { LangSwitch } from './components/lang-switch.js';
 import { SettingsPanel } from './components/settings-panel.js';
 import { accessInfo, churningJobs, addToast, readOnly } from './lib/state.js';
-import { postGroupAction } from './lib/api.js';
 import { churnSummary } from './lib/format.js';
 import { ConfirmDialog } from './components/confirm-dialog.js';
 
@@ -84,11 +83,78 @@ function StormBanner() {
   `;
 }
 
+/**
+ * Desired-state drift banner — expected vs actual for Ours jobs with a rule.
+ */
+function DriftBanner({ drifts, onAligned }) {
+  const [pending, setPending] = useState(null);
+  if (!drifts || drifts.length === 0) return null;
+
+  const first = drifts[0];
+  const align = async () => {
+    const target = pending || first;
+    setPending(null);
+    try {
+      const res = await postDriftAlign(target.label, target.alignAction);
+      addToast(t('drift.toast', {
+        label: target.label,
+        action: res.action || target.alignAction || 'align',
+      }), !!res.ok);
+      if (onAligned) onAligned();
+    } catch (err) {
+      addToast(t('drift.toastFail', { label: first.label, message: err.message }), false);
+    }
+  };
+
+  return html`
+    <div class="storm-banner drift-banner" role="status">
+      <span class="storm-banner__icon" aria-hidden>📐</span>
+      <div class="storm-banner__body">
+        <strong>${t(drifts.length === 1 ? 'drift.one' : 'drift.many', { n: drifts.length })}</strong>
+        <span class="storm-banner__list">
+          ${drifts.slice(0, 4).map((d) => html`
+            <code key=${d.label} title=${`${d.expectedStatus} → ${d.actualStatus}`}>${d.label}</code>
+          `)}
+          ${drifts.length > 4 ? html`<span>${t('storm.more', { n: drifts.length - 4 })}</span>` : null}
+        </span>
+        <span class="storm-banner__detail">
+          ${t('drift.detail', {
+            label: first.label,
+            expected: first.expectedStatus,
+            actual: first.actualStatus,
+          })}
+        </span>
+      </div>
+      <span class="storm-banner__actions">
+        <button
+          class="btn btn--sm"
+          disabled=${readOnly.value || !first.alignAction}
+          onClick=${() => setPending(first)}
+        >${t('drift.align')}</button>
+      </span>
+      <${ConfirmDialog}
+        open=${pending !== null}
+        title=${t('drift.alignTitle')}
+        label=${pending ? pending.label : ''}
+        note=${t('drift.alignNote', {
+          action: pending ? (pending.alignAction || '') : '',
+          expected: pending ? pending.expectedStatus : '',
+        })}
+        action="start"
+        confirmClass="btn--active"
+        onConfirm=${() => pending && align()}
+        onCancel=${() => setPending(null)}
+      />
+    </div>
+  `;
+}
+
 function App() {
   const [showAlerts, setShowAlerts] = useState(false);
   const [alertsSummary, setAlertsSummary] = useState({ available: false, enabled: 0, disabled: 0 });
   const [inventorySummary, setInventorySummary] = useState({ ours: 0, noise: 0, other: 0 });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [drifts, setDrifts] = useState([]);
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -121,13 +187,24 @@ function App() {
     }
   }, []);
 
+  const loadDrift = useCallback(async () => {
+    try {
+      const data = await fetchDrift();
+      setDrifts(data.drifts || []);
+    } catch (e) {
+      setDrifts([]);
+    }
+  }, []);
+
   useEffect(() => {
     const es = connectSSE();
     loadAlerts();
     loadInventory();
     loadAccess();
-    return () => es.close();
-  }, [loadAlerts, loadInventory, loadAccess]);
+    loadDrift();
+    const id = setInterval(loadDrift, 5000);
+    return () => { es.close(); clearInterval(id); };
+  }, [loadAlerts, loadInventory, loadAccess, loadDrift]);
 
   return html`
     <header>
@@ -155,6 +232,11 @@ function App() {
             noise: inventorySummary.noise,
           })}
         </span>
+        ${drifts.length > 0 && html`
+          <span class="badge badge--drift" title=${t('drift.badgeTitle')}>
+            📐 ${t('drift.badge', { n: drifts.length })}
+          </span>
+        `}
         ${accessInfo.value && (accessInfo.value.read_only
           ? html`<span
               class=${`badge ${accessInfo.value.locked ? 'badge--locked' : 'badge--readonly'}`}
@@ -169,6 +251,7 @@ function App() {
       </div>
     </header>
     <main>
+      <${DriftBanner} drifts=${drifts} onAligned=${loadDrift} />
       <${StormBanner} />
       <${SearchBar} />
       <${FilterBar} />

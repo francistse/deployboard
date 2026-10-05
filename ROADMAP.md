@@ -47,7 +47,7 @@ Product facts live in [`PRODUCT-STATE.md`](PRODUCT-STATE.md). This file is the c
 
 ## Phase 1 — Desired state for Ours
 
-**Status:** planned (highest leverage)
+**Status:** shipped
 
 **Gap:** every competitor shows live state. None treat “these labels must be running / disabled /
 probing” as a reconcile target (the systemd/Kubernetes pattern, absent from launchd GUIs).
@@ -65,7 +65,7 @@ probing” as a reconcile target (the systemd/Kubernetes pattern, absent from la
 
 ### Touchpoints
 
-`internal/inventory`, `cmd/deployboard`, `internal/server`, `web/`, `docs/`
+`internal/desired`, `cmd/deployboard`, `internal/server`, `web/`, `docs/`
 
 ### Success
 
