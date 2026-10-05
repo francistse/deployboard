@@ -17,7 +17,7 @@ export const content: Content = {
     githubUrl: REPO,
     changelogUrl: REPO + "/blob/main/CHANGELOG.md",
     upstreamUrl: "https://github.com/RoboZephyr/launch-pilot",
-    version: "v0.0.2",
+    version: "v0.0.3",
     license: "MIT",
   },
   nav: [

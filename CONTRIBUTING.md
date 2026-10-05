@@ -12,7 +12,7 @@ Requirements: macOS 13+, Go (see `go.mod`), Node 20.9+ for the frontend and the 
 ```sh
 git clone https://github.com/francistse/deployboard.git
 cd deployboard
-make build          # -> ./deployboard  (version from Makefile, default 0.0.2)
+make build          # -> ./deployboard  (version from Makefile, default 0.0.3)
 make test           # Go tests, explicit package list
 npm test            # frontend tests (node --test, no install needed)
 npm ci && npm run e2e   # Playwright end-to-end (Chromium)

@@ -3,8 +3,8 @@
 # Deployboard's own version line, restarting at 0.0.1 — this is a fork, so the
 # inherited upstream tags (v0.1.0-v0.3.1) must NOT leak into the binary's version.
 # `git describe --tags` would resolve to v0.3.1, hence the explicit default.
-# Override per build: make build VERSION=0.0.2
-VERSION ?= 0.0.2
+# Override per build: make build VERSION=0.0.3
+VERSION ?= 0.0.3
 
 # Explicit package list, not ./... — landing/node_modules contains JavaScript
 # packages that ship stray Go files, and Go's ./... would walk into them.
