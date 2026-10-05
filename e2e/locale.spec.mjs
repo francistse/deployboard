@@ -53,7 +53,17 @@ test('settings panel language switch keeps pace with the header control', async 
     .toHaveAttribute('aria-checked', 'true');
 });
 
-test('browser language maps Traditional Chinese tags to zh-Hant before first paint', async ({ browser }) => {
+test('header Traditional Chinese button sets zh-Hant copy, not Simplified', async ({ page }) => {
+  await clearLocaleAndGoto(page);
+
+  await page.locator('.lang-switch--header').getByRole('radio', { name: '繁體中文' }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-Hant');
+  await expect(page.locator('header p')).toContainText('只顯示你的部署');
+  await expect(page.locator('header p')).not.toContainText('仅显示');
+  await expect(page.getByText('找不到工作。')).toBeVisible();
+  await expect(page.getByText('未找到任务。')).toHaveCount(0);
+});
+
   const context = await browser.newContext({ locale: 'zh-TW' });
   const page = await context.newPage();
   await page.addInitScript(() => {
