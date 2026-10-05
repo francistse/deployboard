@@ -3,14 +3,14 @@ import { REPO, heroPanel, logStream, metricsQuery, metricsSample } from "./fixtu
 
 export const content: Content = {
   meta: {
-    title: "Deployboard — 看你自己的 launchd 部署，而不是 500 個系統作業",
+    title: "Deployboard — Launchd 沒有 dashboard",
     description:
-      "給你真正部署過的 launchd 作業用的本機儀表板：什麼在跑、什麼壞了、什麼是你刻意退役的，再加上 Prometheus 指標，以及可按應用程式開關的 Telegram 警報。只綁定 127.0.0.1；沒有雲端，沒有遙測。",
+      "Launchd 沒有 dashboard。這是在瀏覽器管理自己的 launchd services 的 console，同時輸出 Prometheus metrics。",
   },
   brand: {
     name: "Deployboard",
     mark: "DB",
-    tagline: "你的 launchd 部署，一目了然",
+    tagline: "在瀏覽器管理自己的 launchd services",
     installCommand: "brew install --cask francistse/tap/deployboard",
     launchCommand: "deployboard",
     github: "github.com/francistse/deployboard",
@@ -37,21 +37,24 @@ export const content: Content = {
     settings: "設定",
   },
   hero: {
-    eyebrow: "v0.0.2 · MIT · macOS · fork 自 launch-pilot",
-    headline: ["你的部署，", "不是 545 個系統作業。"],
-    body: "你的 Mac 跑著幾百個 LaunchAgents——Dropbox、Chrome、Spotify，還有各種更新程式。Deployboard 只顯示你真正部署過的那些，告訴你哪些在跑、哪些壞了、哪些是你刻意退役的。然後把這一切變成 Prometheus 指標和 Telegram 警報。",
+    eyebrow: "macOS · 一個指令 · 127.0.0.1",
+    headline: [
+      "Launchd 沒有 dashboard。",
+      "這是在瀏覽器管理自己的 launchd services 的 console，同時輸出 Prometheus metrics。",
+    ],
+    body: "一個指令裝好。瀏覽器裡看狀態、日誌、警報。",
     primaryCta: { label: "一行指令安裝", href: "#install" },
     secondaryCta: { label: "閱讀原始碼", href: REPO },
     metaRow: [
-      { key: "執行位置", value: "本機 · 只限 127.0.0.1" },
-      { key: "顯示", value: "你的應用程式 · 系統雜訊隱藏" },
-      { key: "提供", value: "/metrics · /api/jobs · SSE" },
+      { key: "安裝", value: "一個指令" },
+      { key: "瀏覽器", value: "狀態 · 日誌 · 警報" },
+      { key: "輸出", value: "Prometheus /metrics" },
     ],
   },
   livePanel: {
     title: "127.0.0.1:9410 · Deployboard",
     liveBadge: "SSE · 即時",
-    appTagline: "macOS launchd 清單 — 只顯示你自己部署的",
+    appTagline: "在瀏覽器管理自己的 launchd services",
     badges: {
       alerts: "16 開 · 2 關",
       inventory: "我的 16 · 其他 1 · 雜訊 528",
@@ -77,6 +80,14 @@ export const content: Content = {
     streamType: "text/event-stream",
     push: "每 5 秒推送",
     ...heroPanel,
+  },
+  preview: {
+    views: "檢視",
+    metrics: "/metrics",
+    telegram: "Telegram",
+    hint: "按「我的」、「其他」或「雜訊」。然後看 /metrics 和 Telegram 警報。",
+    noiseHeading: "雜訊",
+    noiseNote: "528 個裡的幾個。預設檢視不會出現。",
   },
   why: {
     eyebrow: "為何",
@@ -306,8 +317,8 @@ export const content: Content = {
   },
   cta: {
     eyebrow: "安裝",
-    headline: "弄清楚你的 Mac 在跑什麼。",
-    body: "brew install --cask francistse/tap/deployboard —— 沒有 Homebrew 就 curl 發行安裝腳本。一個設定檔標出哪些是你的。",
+    headline: "Launchd 沒有 dashboard。",
+    body: "這是在瀏覽器管理自己的 launchd services 的 console，同時輸出 Prometheus metrics。",
     command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {

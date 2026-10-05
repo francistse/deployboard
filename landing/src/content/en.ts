@@ -3,14 +3,14 @@ import { REPO, heroPanel, logStream, metricsQuery, metricsSample } from "./fixtu
 
 export const content: Content = {
   meta: {
-    title: "Deployboard — see your own launchd deployments, not 500 system jobs",
+    title: "Deployboard — Launchd has no dashboard",
     description:
-      "A local dashboard for the launchd jobs you actually deployed: what is running, what broke, what you retired on purpose — plus Prometheus metrics and Telegram alerts with per-application toggles. Binds to 127.0.0.1; no cloud, no telemetry.",
+      "Launchd has no dashboard. This is the console for managing your own launchd services in the browser, and it exports Prometheus metrics.",
   },
   brand: {
     name: "Deployboard",
     mark: "DB",
-    tagline: "your launchd deployments, legible",
+    tagline: "the console for your own launchd services",
     installCommand: "brew install --cask francistse/tap/deployboard",
     launchCommand: "deployboard",
     github: "github.com/francistse/deployboard",
@@ -37,21 +37,24 @@ export const content: Content = {
     settings: "Settings",
   },
   hero: {
-    eyebrow: "v0.0.2 · MIT · macOS · fork of launch-pilot",
-    headline: ["Your deployments,", "not 545 system jobs."],
-    body: "Your Mac runs hundreds of LaunchAgents — Dropbox, Chrome, Spotify, every updater. Deployboard shows the ones you actually deployed, tells you which are up, which are broken, and which you retired on purpose. Then it turns all of it into Prometheus metrics and Telegram alerts.",
+    eyebrow: "macOS · one command · 127.0.0.1",
+    headline: [
+      "Launchd has no dashboard.",
+      "This is the console for managing your own launchd services in the browser, and it exports Prometheus metrics.",
+    ],
+    body: "One command installs it. The browser shows status, logs, and alerts.",
     primaryCta: { label: "Install in one command", href: "#install" },
     secondaryCta: { label: "Read the source", href: REPO },
     metaRow: [
-      { key: "runtime", value: "Local · 127.0.0.1 only" },
-      { key: "shows", value: "your apps · system noise hidden" },
-      { key: "exposes", value: "/metrics · /api/jobs · SSE" },
+      { key: "install", value: "one command" },
+      { key: "browser", value: "status · logs · alerts" },
+      { key: "exports", value: "Prometheus /metrics" },
     ],
   },
   livePanel: {
     title: "127.0.0.1:9410 · Deployboard",
     liveBadge: "SSE · live",
-    appTagline: "macOS launchd inventory — your deployments only",
+    appTagline: "console for your own launchd services",
     badges: {
       alerts: "16 on · 2 off",
       inventory: "16 ours · 1 other · 528 noise",
@@ -77,6 +80,14 @@ export const content: Content = {
     streamType: "text/event-stream",
     push: "5s push",
     ...heroPanel,
+  },
+  preview: {
+    views: "Views",
+    metrics: "/metrics",
+    telegram: "Telegram",
+    hint: "Click Ours, Other, or Noise. Then open /metrics and the Telegram alert.",
+    noiseHeading: "Noise",
+    noiseNote: "A sample of the 528. They stay out of the default view.",
   },
   why: {
     eyebrow: "Why",
@@ -307,8 +318,8 @@ export const content: Content = {
   },
   cta: {
     eyebrow: "Install",
-    headline: "Know what your Mac is running.",
-    body: "brew install --cask francistse/tap/deployboard — or curl the release installer if you are not on Homebrew. One config file to mark what is yours.",
+    headline: "Launchd has no dashboard.",
+    body: "This is the console for managing your own launchd services in the browser, and it exports Prometheus metrics.",
     command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {
