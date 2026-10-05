@@ -64,6 +64,7 @@ test('header Traditional Chinese button sets zh-Hant copy, not Simplified', asyn
   await expect(page.getByText('未找到任务。')).toHaveCount(0);
 });
 
+test('browser language maps Traditional Chinese tags to zh-Hant before first paint', async ({ browser }) => {
   const context = await browser.newContext({ locale: 'zh-TW' });
   const page = await context.newPage();
   await page.addInitScript(() => {
