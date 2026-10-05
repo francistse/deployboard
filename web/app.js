@@ -9,6 +9,7 @@ import { JobTable } from './components/job-table.js';
 import { ToastContainer } from './components/toast.js';
 import { StatusTooltip } from './components/job-tooltip.js';
 import { ThemeToggle } from './components/theme-toggle.js';
+import { LangSwitch } from './components/lang-switch.js';
 import { SettingsPanel } from './components/settings-panel.js';
 import { accessInfo, churningJobs, addToast, readOnly } from './lib/state.js';
 import { postGroupAction } from './lib/api.js';
@@ -136,6 +137,7 @@ function App() {
           <p>${t('header.subtitle')}</p>
         </div>
         <div class="header-actions">
+          <${LangSwitch} className="lang-switch--header" />
           <${ThemeToggle} />
           <button class="btn btn--sm" onClick=${() => setSettingsOpen(true)} title=${t('settings.title')}>⚙ ${t('settings.title')}</button>
         </div>

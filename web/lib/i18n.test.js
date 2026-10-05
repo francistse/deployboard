@@ -90,6 +90,17 @@ describe('t()', () => {
     assert.equal(locale.value, 'ja');
     assert.doesNotThrow(() => setLocale(null, false));
   });
+
+  it('covers every known status and the read-only lock tooltip key', () => {
+    for (const status of ['running', 'scheduled', 'completed', 'stopped', 'error', 'offline', 'disabled', 'all']) {
+      assert.ok(catalogs.en['status.' + status], `missing status.${status}`);
+    }
+    assert.ok(catalogs.en['row.readOnlyLocked']);
+    assert.notEqual(t('row.readOnlyLocked'), 'row.readOnlyLocked');
+    setLocale('zh-Hans', false);
+    assert.notEqual(t('row.readOnlyLocked'), 'row.readOnlyLocked');
+    assert.notEqual(t('row.readOnlyLocked'), catalogs.en['row.readOnlyLocked']);
+  });
 });
 
 describe('resolveInitialLocale()', () => {

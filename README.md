@@ -26,6 +26,7 @@ instead: **which of MY deployed applications are up, broken, or intentionally of
 | **Telegram alerts + per-app toggles** | Transition-based alerts (error / offline / port unreachable / restart storm / recovery), 🔔 switch per application, cooldown + quiet hours, token from the macOS Keychain. | [`docs/ALERTS.md`](docs/ALERTS.md) |
 | **One-command macOS install** | `make install-macos` → binary to `~/bin`, LaunchAgent with `KeepAlive`, health check. Plus a Homebrew formula and a manual path. | [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md) |
 | **Write access you control** | Read-only mode refuses `reload`/`start`/`stop` server-side and disables the row buttons; the settings switch turns it back on (writes `read_only` to `config.json`, applied in ~2s, behind a confirmation). `--read-only` on the command line stays a **hard lock** the UI cannot undo, so a monitoring box still cannot be talked into killing a service. | `docs/INSTALL-macos.md` |
+| **Multi-language UI** | English / 日本語 / 繁體中文 / 简体中文 for the embedded dashboard and the landing site. Auto-detects from the browser, persists the choice, and exposes a header + Settings switcher. | below |
 | **`config.json` hot reload** | Edit the file (or click a classify action) → applied in ~2s, no restart. | `docs/INSTALL-macos.md` |
 | **Honest Stop, Disable/Enable** | Stop picks the mechanism that holds: `bootout` for a KeepAlive job (a signal would just restart it — the job stays listed as `offline` and Start bootstraps it back), `SIGTERM` otherwise. `Disable` retires a job across logins and reboots; `Enable` undoes it. | below |
 | **Verified actions** | Every action re-reads launchd before answering (`verified.ok` + a `verdict` when it did not take) and the UI re-checks two seconds later, so "succeeded" never means "we sent a command". | below |
@@ -87,6 +88,8 @@ Seventh status value, on top of upstream's six:
 - **Status tabs** — All / Running / Scheduled / Completed / Stopped / Error / Offline, each showing count
 - **Only Mine toggle** — One-click shortcut to show only user-created jobs (persisted to localStorage)
 - **Search** — Label substring filter, composable with all above
+
+**Multi-language UI** — Dashboard and marketing site ship in English, Japanese, Traditional Chinese, and Simplified Chinese. The dashboard picks a locale from `localStorage` (`deployboard:locale`), then `navigator.language`, then English; switch anytime from the header control or Settings → Language. The landing site mirrors the same four locales at `/`, `/ja/`, `/zh-Hant/`, and `/zh-Hans/`.
 
 ## Install
 

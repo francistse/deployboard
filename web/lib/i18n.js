@@ -172,6 +172,7 @@ const ROWS = [
   ['row.keepAliveRuns', 'KeepAlive: launchd restarts this job whenever it exits', 'KeepAlive: 終了するたびに launchd が再起動します', 'KeepAlive：行程一結束 launchd 就會再啟動', 'KeepAlive：进程一退出 launchd 就会重启它'],
   ['row.pinnedHidden', '{label} pinned as hidden', '{label} を非表示に固定しました', '已將 {label} 固定為隱藏', '已将 {label} 固定为隐藏'],
   ['row.pinnedOurs', '{label} pinned as Ours', '{label} を「自分」に固定しました', '已將 {label} 固定為我的', '已将 {label} 固定为我的'],
+  ['row.readOnlyLocked', 'Read-only — locked by the --read-only start-up flag', '読み取り専用 — --read-only 起動フラグでロックされています', '唯讀 — 被 --read-only 啟動參數鎖定', '只读 — 被 --read-only 启动参数锁定'],
   ['row.restartLoop', 'restart loop', '再起動ループ', '重啟循環', '重启循环'],
   ['row.restartNow', 'Restart it now (bootout + bootstrap)', '今すぐ再起動（bootout + bootstrap）', '立即重啟（bootout + bootstrap）', '立即重启（bootout + bootstrap）'],
   ['row.restartsAria', 'restarts: {summary}', '再起動: {summary}', '重啟：{summary}', '重启：{summary}'],
