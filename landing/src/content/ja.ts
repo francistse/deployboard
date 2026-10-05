@@ -17,7 +17,7 @@ export const content: Content = {
     githubUrl: REPO,
     changelogUrl: REPO + "/blob/main/CHANGELOG.md",
     upstreamUrl: "https://github.com/RoboZephyr/launch-pilot",
-    version: "v0.0.1",
+    version: "v0.0.2",
     license: "MIT",
   },
   nav: [
@@ -37,7 +37,7 @@ export const content: Content = {
     settings: "設定",
   },
   hero: {
-    eyebrow: "v0.0.1 · MIT · macOS · launch-pilot のフォーク",
+    eyebrow: "v0.0.2 · MIT · macOS · launch-pilot のフォーク",
     headline: ["あなたのデプロイだけ。", "545 個のシステムジョブではない。"],
     body: "Mac では Dropbox、Chrome、Spotify、あらゆるアップデータなど、何百もの LaunchAgents が動いています。Deployboard は、実際にデプロイしたものだけを見せ、動いているもの、壊れているもの、意図して退役させたものを分けます。そのうえで全体を Prometheus メトリクスと Telegram 通知にします。",
     primaryCta: { label: "コマンド一つで導入", href: "#install" },
@@ -302,12 +302,12 @@ export const content: Content = {
   install: {
     eyebrow: "インストール",
     title: "コマンド一つ。設定ファイル一つ。タブ一つ。",
-    body: "バイナリは Homebrew、LaunchAgent まで含めるなら install-release.sh / install.sh。再起動やクラッシュのあとでもダッシュボードが戻ります。sudo 不要、再実行でき、--dry-run と --uninstall もあります。",
+    body: "導入は3通りで同じバイナリ: Homebrew cask（ヒーローのコマンド）、Go なしで LaunchAgent まで入れる curl install-release.sh、クローンからの bash install.sh。sudo 不要。スクリプトは --dry-run と --uninstall 対応。",
   },
   cta: {
     eyebrow: "インストール",
     headline: "Mac が何を動かしているか、把握する。",
-    body: "導入はコマンド一つ、自分のものを伝える設定ファイルは一つ。次に何かが静かに再起動を始めたとき、Telegram に一通届きます。",
+    body: "brew install --cask francistse/tap/deployboard — Homebrew がなければリリース用インストーラを curl。自分のものを伝える設定ファイルは一つ。",
     command: "brew install --cask francistse/tap/deployboard",
   },
   footer: {
