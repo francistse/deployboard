@@ -1477,7 +1477,14 @@ func newServer(cfg Config, app *appState) (*http.Server, error) {
 }
 
 func main() {
-	cfg, versionRequested, err := parseFlags(os.Args[1:])
+	args := os.Args[1:]
+	mcpMode := false
+	if len(args) > 0 && args[0] == "mcp" {
+		mcpMode = true
+		args = args[1:]
+	}
+
+	cfg, versionRequested, err := parseFlags(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "deployboard:", err)
 		os.Exit(1)
@@ -1491,6 +1498,14 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "deployboard: %v\n", err)
 		os.Exit(1)
+	}
+
+	if mcpMode {
+		if err := runMCP(app); err != nil {
+			fmt.Fprintf(os.Stderr, "deployboard mcp: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	srv, err := newServer(cfg, app)

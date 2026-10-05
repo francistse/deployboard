@@ -124,7 +124,7 @@ cron companions show up beside LaunchAgents without drowning the default view in
 
 ## Phase 4 — Agent surface that inherits the wedge
 
-**Status:** planned
+**Status:** shipped
 
 **Gap:** tools like [launchd-audit](https://pypi.org/project/launchd-audit/) MCP audit *everything*.
 Deployboard should expose an MCP (stdio) that only speaks **Ours + desired + verified actions +

@@ -69,11 +69,10 @@
 
 | Phase | What | Status |
 |---|---|---|
-| 1 | Desired state for Ours — `desired` config, drift panel + align, drift metrics/alerts | Planned |
-| 2 | Health contracts (HTTP/TCP/exec) + local incident JSONL timeline + crash fingerprints | Planned |
-| 3 | Project-native `deployboard.yaml` + optional brew/cron under Ours | Planned |
-| 3 | Project `deployboard.yaml` + brew/cron | Shipped (this branch) |
-| 4 | Ours-scoped MCP agent surface (dry-run actions, respects read-only) | Planned |
+| 1 | Desired state for Ours — `desired` config, drift panel + align, drift metrics/alerts | Shipped |
+| 2 | Health contracts (HTTP/TCP/exec) + local incident JSONL timeline + crash fingerprints | Shipped |
+| 3 | Project-native `deployboard.yaml` + optional brew/cron under Ours | Shipped |
+| 4 | Ours-scoped MCP agent surface (dry-run actions, respects read-only) | Shipped |
 
 **Deferred (not committed):** observe-only remote / Team push-status — short note only in `ROADMAP.md`.
 
