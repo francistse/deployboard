@@ -2,10 +2,11 @@
 
 > **产品档案**：跨 iteration 累积的产品事实记录。由 forge release 成功后自动追加，feature mode 启动时读此档案建立上下文。
 
-**Last updated**: 2026-10-05 (v0.0.2 Homebrew cask + GitHub Release binaries)
+**Last updated**: 2026-10-05 (differentiation roadmap Phases 1–4 documented)
 **Slug**: `deployboard`
 **Current version**: v0.0.2
 **Repo**: https://github.com/francistse/deployboard
+**Roadmap**: [`ROADMAP.md`](ROADMAP.md) — committed future work (desired state, health contracts + incidents, project-native registration, agent MCP)
 
 ---
 
@@ -15,6 +16,8 @@
 
 **Objective**: 让 macOS 开发者通过 `brew install` 一条命令安装、在浏览器中一眼看到所有 launchd job 的运行状态，并能一键管理和诊断故障 —— 替代手动 `launchctl` CLI + 手写 plist 的痛苦工作流。
 
+**Wedge**: 回答的是 **which of MY deployed applications are up, broken, or intentionally off**，而不是 Lingon/LaunchControl 式的“浏览/编辑每一条 launchd job”。未来工作坚持这条楔子，见 [`ROADMAP.md`](ROADMAP.md)。
+
 **Target User**: macOS 开发者和 power users（25-40 岁），日常使用 Homebrew，本地运行 3-10 个后台服务。主要人群：Solo Developer、Side Project Builder、DevOps/SRE、Indie macOS Developer、Data/ML Engineer。
 
 **Business model**: 开源免费（MIT）+ Open Core/Freemium（Pro/Team tier 远期）
@@ -22,6 +25,15 @@
 ---
 
 ## Delivered Features
+
+### Deployboard fork additions (shipped on top of upstream)
+
+- **Ours / Other / Noise inventory** — path derivation via `derive_roots` + allowlist; default view is deployments only
+- **`launchctl print` truth** — `runs`, `print-disabled`, seventh status `disabled`
+- **Prometheus `/metrics`** — launchd→time series (`deployboard_job_*`, probes, alerts); see [`docs/METRICS.md`](docs/METRICS.md)
+- **Telegram transition alerts** — error / offline / unreachable / run_storm / recovery; per-app toggles, cooldown, quiet hours, Keychain token; see [`docs/ALERTS.md`](docs/ALERTS.md)
+- **Honest Stop / Disable / Enable**, verified actions, group bulk actions, restart-loop banner, uptime + retirement history
+- Soft UI `read_only` vs hard `--read-only`; `config.json` hot reload; one-command / Homebrew / Release install
 
 ### Multi-language UI (dashboard + landing)
 
@@ -53,19 +65,33 @@
 
 ---
 
+## Committed roadmap (see [`ROADMAP.md`](ROADMAP.md))
+
+| Phase | What | Status |
+|---|---|---|
+| 1 | Desired state for Ours — `desired` config, drift panel + align, drift metrics/alerts | Planned |
+| 2 | Health contracts (HTTP/TCP/exec) + local incident JSONL timeline + crash fingerprints | Planned |
+| 3 | Project-native `deployboard.yaml` + optional brew/cron under Ours | Planned |
+| 4 | Ours-scoped MCP agent surface (dry-run actions, respects read-only) | Planned |
+
+**Deferred (not committed):** observe-only remote / Team push-status — short note only in `ROADMAP.md`.
+
+---
+
 ## Current Not Doing（累积，按版本可能解锁）
 
 | 项 | 原因 | 可能解锁版本 |
 |---|---|---|
-| 可视化 plist 编辑器 | V1 聚焦"看 + 管 + 诊断"，写交给用户现有工具 | V2 (Free) |
-| 远程管理多台 Mac | 安全攻击面大；偏离单机本地使用定位 | Team tier |
+| Desired state / drift / contracts / project YAML / Ours MCP | Committed differentiation work — tracked in [`ROADMAP.md`](ROADMAP.md), not deferred | ROADMAP Phases 1–4 |
+| 可视化 plist 编辑器 | 偏离 wedge；Lingon/LaunchControl/mac-dash 已覆盖；V1 聚焦"看 + 管 + 诊断" | Deferred (parity trap) |
+| 远程管理多台 Mac（含写操作） | 安全攻击面大；偏离单机本地使用定位 | Deferred；observe-only push 见 ROADMAP Later |
 | 系统级 LaunchDaemons (`/Library/LaunchDaemons`, `/System/...`) | 需 root + privileged helper；Big Sur+ 已限制修改；安全风险 | 长期不做 |
-| AI/LLM 辅助诊断 | V1 用确定性规则引擎覆盖 80% 常见问题；AI 诊断作为 Pro 功能 | V2 Pro |
-| 通知告警（job 失败推送到系统/Slack/webhook） | Pro tier 功能；V1 是被动查看工具 | V2 Pro |
+| AI/LLM 辅助诊断 / AI 改写 plist | V1 用确定性规则；LaunchControl 已做 LLM edit；RCA fingerprints 走 Phase 2 确定性路径 | Deferred / Pro idea |
+| Slack / webhook / 系统通知渠道 | **Telegram 过渡告警已交付**；其他渠道可扩展，不阻塞 ROADMAP | Optional later |
 | 实时长连接（FSEvents / launchctl log stream） | SSE 5s 轮询已够；长连接是独立演进方向 | 待评估 |
-| 精确运行历史（launchd 内部 job history） | Apple 无稳定 API；用 mtime 启发式近似 | 不做（Apple 不给） |
-| 完整 cron 表达式解析器 | launchd CalendarInterval 只支持单值/缺失；不引入 robfig/cron | 不做 |
-| 历史趋势图 / 运行次数统计 | 当前只回答"现在这一刻 job 是什么状态"，不做时间序列 | 远期独立 feature |
+| 精确运行历史（launchd 内部 job history） | Apple 无稳定 API；mtime 启发式 + Phase 2 本地 transition log | 不做（Apple 不给） |
+| 完整 cron 表达式解析器 | launchd CalendarInterval 只支持单值/缺失；Phase 3 cron 仅为 read-only companion | 不做 |
+| 历史趋势图（应用内） | **Prometheus `/metrics` 已交付**时间序列出口；应用内图表非优先 | Grafana / optional later |
 | UI 主题/徽章视觉重设计 | 仅扩展 CSS 变量，不重写组件 | 按需 |
 
 ---

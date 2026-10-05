@@ -18,6 +18,10 @@ Upstream classifies jobs by domain, so "Mine" includes Dropbox, Chrome, Spotify,
 every updater — on a developer Mac, 545 jobs, mostly noise. The fork answers the question that matters
 instead: **which of MY deployed applications are up, broken, or intentionally off.**
 
+Committed next steps stay on that wedge (desired state, health contracts + incidents, project-native
+registration, Ours-scoped agent MCP) — see [`ROADMAP.md`](ROADMAP.md). Product facts:
+[`PRODUCT-STATE.md`](PRODUCT-STATE.md).
+
 | Addition | What it does | Docs |
 |---|---|---|
 | **Ours / Other / Noise view** | Default view is your deployments only. Anything whose plist log/working dir/args live under `derive_roots` is auto-classified as yours (most of them here, 0 false positives across 528 vendor jobs); a short allowlist covers infra that lives outside the project tree. `Hide`/`Auto` per row from the UI. | `docs/INSTALL-macos.md` (config) |
