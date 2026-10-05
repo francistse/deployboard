@@ -8,7 +8,7 @@ it can be rebased, and never removes an upstream feature.
 - **Licence**: MIT (see `LICENSE`) — the fork keeps the upstream copyright.
 - **Module path** is `github.com/A404coder/deployboard`. Upstream's module was
   `github.com/A404coder/launch-pilot`; import paths will conflict on a rebase.
-- **Not built by this fork**: `landing/` (upstream's Cloudflare Pages site).
+- **Landing**: `landing/` is this fork's static site. The hero is the positioning sentence plus a live preview. See [`landing/README.md`](../landing/README.md).
 
 ## Remotes
 
