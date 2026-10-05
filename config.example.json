@@ -7,6 +7,8 @@
   "inventory": {
     "show_noise_default": false,
     "restart_warn_threshold": 50,
+    "include_homebrew_infra": true,
+    "homebrew_group": "Infra",
     "groups": [
       {"name": "Example App", "match": ["com.example.app.*"]},
       {"name": "Infra", "match": ["com.example.infra.*", "com.ollama.*"]}
@@ -35,5 +37,18 @@
       "keychain_account": "bot_token",
       "timeout_seconds": 10
     }
-  }
+  },
+  "desired": {
+    "jobs": [
+      {"match": "com.example.app.*", "status": "running", "max_restart_rate": 5},
+      {"match": "com.example.worker.*", "status": "disabled"}
+    ],
+    "groups": [
+      {"name": "Example App", "status": "running", "probe_port": 8080}
+    ]
+  },
+  "contracts": [
+    {"group": "Example App", "http": {"port": 8080, "path": "/health", "expect_status": 200}},
+    {"group": "Infra", "tcp": {"port": 5432}}
+  ]
 }

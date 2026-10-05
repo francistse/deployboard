@@ -30,6 +30,10 @@ type JobMetric struct {
 	ProbeStatus   int
 	ProbeLatencyS float64
 	HasProbe      bool
+	// DesiredUp is 1 when a desired rule expects this job to be running.
+	// HasDesired is false when no rule applies (series omitted).
+	HasDesired bool
+	DesiredUp  float64
 }
 
 // Input is everything the exposition needs.
@@ -37,6 +41,18 @@ type Input struct {
 	Version  string
 	Jobs     []JobMetric
 	Duration time.Duration
+	// DriftByReason counts open drifts keyed by reason (status, disabled, …).
+	DriftByReason map[string]int
+	// ContractOK is 1/0 per contract identity (group|match|kind).
+	Contracts []ContractMetric
+}
+
+// ContractMetric is one health-contract sample.
+type ContractMetric struct {
+	Group string
+	Match string
+	Kind  string
+	OK    bool
 }
 
 // EscapeLabel escapes a Prometheus label value: backslash, double quote, newline.
@@ -109,6 +125,42 @@ func Render(in Input) string {
 				sample{"deployboard_job_probe_latency_seconds", "Probe latency in seconds.", "gauge", pl, j.ProbeLatencyS},
 			)
 		}
+		if j.HasDesired {
+			samples = append(samples, sample{
+				"deployboard_job_desired_up",
+				"1 when a desired rule expects this job to be running.",
+				"gauge", base, j.DesiredUp,
+			})
+		}
+	}
+
+	if len(in.DriftByReason) > 0 {
+		for _, reason := range sortedKeys(in.DriftByReason) {
+			samples = append(samples, sample{
+				"deployboard_drift_total",
+				"Number of Ours jobs currently drifted from desired state, by reason.",
+				"gauge",
+				[]string{"reason", reason},
+				float64(in.DriftByReason[reason]),
+			})
+		}
+	}
+
+	for _, c := range in.Contracts {
+		labels := []string{"kind", c.Kind}
+		if c.Group != "" {
+			labels = append(labels, "group", c.Group)
+		}
+		if c.Match != "" {
+			labels = append(labels, "match", c.Match)
+		}
+		samples = append(samples, sample{
+			"deployboard_contract_ok",
+			"1 when a health contract currently passes.",
+			"gauge",
+			labels,
+			boolVal(c.OK),
+		})
 	}
 
 	// Process-level series.

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 )
 
 // Category is the bucket a job falls into.
@@ -40,6 +41,9 @@ type Config struct {
 	Hidden               []string `json:"hidden"`
 	DeriveRoots          []string `json:"derive_roots"`
 	RestartWarnThreshold int      `json:"restart_warn_threshold"`
+	// IncludeHomebrewInfra treats homebrew.mxcl.* as Ours in HomebrewGroup.
+	IncludeHomebrewInfra bool   `json:"include_homebrew_infra,omitempty"`
+	HomebrewGroup        string `json:"homebrew_group,omitempty"`
 }
 
 // DefaultConfig is the classification used when no config file is present.
@@ -144,6 +148,12 @@ func (c *Classifier) GroupName(label string) string {
 		if Match(g.Match, label) {
 			return g.Name
 		}
+	}
+	if c.cfg.IncludeHomebrewInfra && strings.HasPrefix(label, "homebrew.mxcl.") {
+		if c.cfg.HomebrewGroup != "" {
+			return c.cfg.HomebrewGroup
+		}
+		return "Infra"
 	}
 	return ""
 }

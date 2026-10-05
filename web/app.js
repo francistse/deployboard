@@ -1,7 +1,7 @@
 import { html, render } from 'htm/preact';
 import { useEffect, useState, useCallback } from 'preact/hooks';
 import { connectSSE } from './lib/sse.js';
-import { fetchAlerts, fetchInventory, fetchAccess } from './lib/api.js';
+import { fetchAlerts, fetchInventory, fetchAccess, fetchDrift, postDriftAlign, postGroupAction, fetchContracts, fetchIncidents } from './lib/api.js';
 import { resolveInitialLocale, setLocale, t } from './lib/i18n.js';
 import { SearchBar } from './components/search-bar.js';
 import { FilterBar } from './components/filter-bar.js';
@@ -12,7 +12,6 @@ import { ThemeToggle } from './components/theme-toggle.js';
 import { LangSwitch } from './components/lang-switch.js';
 import { SettingsPanel } from './components/settings-panel.js';
 import { accessInfo, churningJobs, addToast, readOnly } from './lib/state.js';
-import { postGroupAction } from './lib/api.js';
 import { churnSummary } from './lib/format.js';
 import { ConfirmDialog } from './components/confirm-dialog.js';
 
@@ -84,11 +83,81 @@ function StormBanner() {
   `;
 }
 
+/**
+ * Desired-state drift banner — expected vs actual for Ours jobs with a rule.
+ */
+function DriftBanner({ drifts, onAligned }) {
+  const [pending, setPending] = useState(null);
+  if (!drifts || drifts.length === 0) return null;
+
+  const first = drifts[0];
+  const align = async () => {
+    const target = pending || first;
+    setPending(null);
+    try {
+      const res = await postDriftAlign(target.label, target.alignAction);
+      addToast(t('drift.toast', {
+        label: target.label,
+        action: res.action || target.alignAction || 'align',
+      }), !!res.ok);
+      if (onAligned) onAligned();
+    } catch (err) {
+      addToast(t('drift.toastFail', { label: first.label, message: err.message }), false);
+    }
+  };
+
+  return html`
+    <div class="storm-banner drift-banner" role="status">
+      <span class="storm-banner__icon" aria-hidden>📐</span>
+      <div class="storm-banner__body">
+        <strong>${t(drifts.length === 1 ? 'drift.one' : 'drift.many', { n: drifts.length })}</strong>
+        <span class="storm-banner__list">
+          ${drifts.slice(0, 4).map((d) => html`
+            <code key=${d.label} title=${`${d.expectedStatus} → ${d.actualStatus}`}>${d.label}</code>
+          `)}
+          ${drifts.length > 4 ? html`<span>${t('storm.more', { n: drifts.length - 4 })}</span>` : null}
+        </span>
+        <span class="storm-banner__detail">
+          ${t('drift.detail', {
+            label: first.label,
+            expected: first.expectedStatus,
+            actual: first.actualStatus,
+          })}
+        </span>
+      </div>
+      <span class="storm-banner__actions">
+        <button
+          class="btn btn--sm"
+          disabled=${readOnly.value || !first.alignAction}
+          onClick=${() => setPending(first)}
+        >${t('drift.align')}</button>
+      </span>
+      <${ConfirmDialog}
+        open=${pending !== null}
+        title=${t('drift.alignTitle')}
+        label=${pending ? pending.label : ''}
+        note=${t('drift.alignNote', {
+          action: pending ? (pending.alignAction || '') : '',
+          expected: pending ? pending.expectedStatus : '',
+        })}
+        action="start"
+        confirmClass="btn--active"
+        onConfirm=${() => pending && align()}
+        onCancel=${() => setPending(null)}
+      />
+    </div>
+  `;
+}
+
 function App() {
   const [showAlerts, setShowAlerts] = useState(false);
   const [alertsSummary, setAlertsSummary] = useState({ available: false, enabled: 0, disabled: 0 });
   const [inventorySummary, setInventorySummary] = useState({ ours: 0, noise: 0, other: 0 });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [drifts, setDrifts] = useState([]);
+  const [contractsByGroup, setContractsByGroup] = useState({});
+  const [incidentsOpen, setIncidentsOpen] = useState(false);
+  const [incidents, setIncidents] = useState({ events: [], fingerprints: [] });
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -121,13 +190,49 @@ function App() {
     }
   }, []);
 
+  const loadDrift = useCallback(async () => {
+    try {
+      const data = await fetchDrift();
+      setDrifts(data.drifts || []);
+    } catch (e) {
+      setDrifts([]);
+    }
+  }, []);
+
+  const loadContracts = useCallback(async () => {
+    try {
+      const data = await fetchContracts();
+      const map = {};
+      for (const c of (data.contracts || [])) {
+        const key = c.group || 'Ungrouped';
+        if (!map[key]) map[key] = [];
+        map[key].push(c);
+      }
+      setContractsByGroup(map);
+    } catch (e) {
+      setContractsByGroup({});
+    }
+  }, []);
+
+  const loadIncidents = useCallback(async () => {
+    try {
+      const data = await fetchIncidents(24);
+      setIncidents({ events: data.events || [], fingerprints: data.fingerprints || [] });
+    } catch (e) {
+      setIncidents({ events: [], fingerprints: [] });
+    }
+  }, []);
+
   useEffect(() => {
     const es = connectSSE();
     loadAlerts();
     loadInventory();
     loadAccess();
-    return () => es.close();
-  }, [loadAlerts, loadInventory, loadAccess]);
+    loadDrift();
+    loadContracts();
+    const id = setInterval(() => { loadDrift(); loadContracts(); }, 5000);
+    return () => { es.close(); clearInterval(id); };
+  }, [loadAlerts, loadInventory, loadAccess, loadDrift, loadContracts]);
 
   return html`
     <header>
@@ -139,6 +244,7 @@ function App() {
         <div class="header-actions">
           <${LangSwitch} className="lang-switch--header" />
           <${ThemeToggle} />
+          <button class="btn btn--sm" onClick=${() => { setIncidentsOpen(true); loadIncidents(); }} title=${t('incident.title')}>⏱ ${t('incident.title')}</button>
           <button class="btn btn--sm" onClick=${() => setSettingsOpen(true)} title=${t('settings.title')}>⚙ ${t('settings.title')}</button>
         </div>
       </div>
@@ -155,6 +261,11 @@ function App() {
             noise: inventorySummary.noise,
           })}
         </span>
+        ${drifts.length > 0 && html`
+          <span class="badge badge--drift" title=${t('drift.badgeTitle')}>
+            📐 ${t('drift.badge', { n: drifts.length })}
+          </span>
+        `}
         ${accessInfo.value && (accessInfo.value.read_only
           ? html`<span
               class=${`badge ${accessInfo.value.locked ? 'badge--locked' : 'badge--readonly'}`}
@@ -169,11 +280,47 @@ function App() {
       </div>
     </header>
     <main>
+      <${DriftBanner} drifts=${drifts} onAligned=${loadDrift} />
       <${StormBanner} />
       <${SearchBar} />
       <${FilterBar} />
-      <${JobTable} showAlerts=${showAlerts} />
+      <${JobTable} showAlerts=${showAlerts} contractsByGroup=${contractsByGroup} />
     </main>
+    ${incidentsOpen && html`
+      <aside class="incident-drawer" role="dialog" aria-label=${t('incident.title')}>
+        <div class="incident-drawer__head">
+          <strong>${t('incident.title')}</strong>
+          <button class="btn btn--sm btn--outline" onClick=${() => setIncidentsOpen(false)}>${t('incident.close')}</button>
+        </div>
+        ${incidents.fingerprints.length > 0 && html`
+          <div class="incident-drawer__section">
+            <h3>${t('incident.fingerprints')}</h3>
+            <ul>
+              ${incidents.fingerprints.slice(0, 20).map((f) => html`
+                <li key=${f.hash + f.label}>
+                  <code>${f.label}</code> ×${f.count}
+                  <span class="muted">${f.detail || f.hash}</span>
+                </li>
+              `)}
+            </ul>
+          </div>
+        `}
+        <div class="incident-drawer__section">
+          <h3>${t('incident.timeline')}</h3>
+          <ul>
+            ${(incidents.events || []).slice(0, 50).map((e, i) => html`
+              <li key=${i}>
+                <span class="muted">${e.at}</span>
+                <strong>${e.kind}</strong>
+                ${e.label ? html`<code>${e.label}</code>` : null}
+                <span>${e.detail || ''}</span>
+              </li>
+            `)}
+            ${(!incidents.events || incidents.events.length === 0) ? html`<li class="muted">${t('incident.empty')}</li>` : null}
+          </ul>
+        </div>
+      </aside>
+    `}
     <${SettingsPanel}
       open=${settingsOpen}
       onClose=${() => { setSettingsOpen(false); loadAlerts(); loadAccess(); }}

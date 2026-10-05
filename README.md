@@ -5,6 +5,7 @@
 [![Latest release](https://img.shields.io/github/v/release/francistse/deployboard)](https://github.com/francistse/deployboard/releases)
 [![Platform: macOS 13+](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey.svg)](docs/INSTALL-macos.md)
 [![Live briefing](https://img.shields.io/badge/live%20briefing-github%20pages-22D3EE)](https://francistse.github.io/deployboard/)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/francistse)
 
 **Launchd has no dashboard. This is the console for managing your own launchd services in the browser, and it exports Prometheus metrics.**
 
@@ -63,6 +64,9 @@ Or from a clone: `bash install.sh`. Flags, LaunchAgent, and uninstall: [`docs/IN
 | Install, config, uninstall | [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md) |
 | Prometheus series | [`docs/METRICS.md`](docs/METRICS.md) |
 | Telegram alerts | [`docs/ALERTS.md`](docs/ALERTS.md) |
+| Ours MCP | [`docs/MCP.md`](docs/MCP.md) |
+| Health contracts and incidents | [`docs/CONTRACTS.md`](docs/CONTRACTS.md) |
+| Project registration | [`docs/PROJECTS.md`](docs/PROJECTS.md) |
 | Statuses, API, architecture | [`docs/REFERENCE.md`](docs/REFERENCE.md) |
 | Development | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) |
 | Releases | [`docs/RELEASE.md`](docs/RELEASE.md) |
@@ -70,4 +74,4 @@ Or from a clone: `bash install.sh`. Flags, LaunchAgent, and uninstall: [`docs/IN
 | Next steps | [`ROADMAP.md`](ROADMAP.md) |
 | Product facts | [`PRODUCT-STATE.md`](PRODUCT-STATE.md) |
 
-MIT. Fork of [launch-pilot](https://github.com/RoboZephyr/launch-pilot). Upstream behaviour stays; the fork only adds.
+[MIT](LICENSE). Fork of [launch-pilot](https://github.com/RoboZephyr/launch-pilot). Upstream behaviour stays; the fork only adds. If it saves you time, [sponsor the work](https://github.com/sponsors/francistse).
