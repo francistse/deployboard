@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => {
+async function clearLocaleAndGoto(page) {
   await page.addInitScript(() => {
     try {
       localStorage.removeItem('deployboard:locale');
@@ -9,12 +9,13 @@ test.beforeEach(async ({ page }) => {
   });
   await page.goto('/');
   await page.waitForSelector('.job-table, .job-table__empty', { timeout: 15_000 });
-});
+}
 
 test('header language switch updates UI copy and persists across reload', async ({ page }) => {
+  await clearLocaleAndGoto(page);
+
   const headerSwitch = page.locator('.lang-switch--header');
   await expect(headerSwitch).toBeVisible();
-
   await expect(page.locator('header p')).toHaveText(/macOS launchd inventory/i);
 
   await headerSwitch.getByRole('radio', { name: '日本語' }).click();
@@ -26,15 +27,22 @@ test('header language switch updates UI copy and persists across reload', async 
   const stored = await page.evaluate(() => localStorage.getItem('deployboard:locale'));
   expect(stored).toBe('ja');
 
-  await page.reload();
-  await page.waitForSelector('.job-table, .job-table__empty', { timeout: 15_000 });
-  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
-  await expect(headerSwitch.getByRole('radio', { name: '日本語' })).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByRole('button', { name: /設定/ }).first()).toBeVisible();
+  // Fresh navigation without the clear-locale init script — that script is
+  // bound to this page and would wipe the preference on reload().
+  const page2 = await page.context().newPage();
+  await page2.goto('/');
+  await page2.waitForSelector('.job-table, .job-table__empty', { timeout: 15_000 });
+  await expect(page2.locator('html')).toHaveAttribute('lang', 'ja');
+  await expect(page2.locator('.lang-switch--header').getByRole('radio', { name: '日本語' }))
+    .toHaveAttribute('aria-checked', 'true');
+  await expect(page2.getByRole('button', { name: /設定/ }).first()).toBeVisible();
+  await page2.close();
 });
 
 test('settings panel language switch keeps pace with the header control', async ({ page }) => {
-  await page.getByRole('button', { name: /Settings|設定|设置|設定/ }).first().click();
+  await clearLocaleAndGoto(page);
+
+  await page.getByRole('button', { name: /Settings|設定|设置/ }).first().click();
   const panel = page.locator('.settings-panel');
   await expect(panel).toBeVisible();
 
