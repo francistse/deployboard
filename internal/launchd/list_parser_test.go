@@ -159,4 +159,3 @@ func TestParseListOutput(t *testing.T) {
 		})
 	}
 }
-

@@ -23,6 +23,9 @@
       }
     ],
     "paths": {
+      "@/content": [
+        "./src/content/index.ts"
+      ],
       "@/*": [
         "./src/*"
       ]

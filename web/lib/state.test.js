@@ -4,25 +4,26 @@ import {
   filteredJobs,
   categoryFilter,
   statusFilter,
-  onlyMine,
+  showNoise,
   categoryCounts,
   statusCounts,
+  accessInfo,
+  readOnly,
 } from './state.js';
 import { jobs, searchQuery } from './state.js';
-import { FIXTURES, resetSignals } from './test-fixtures.js';
+import { FIXTURES, COUNTS, WITH_ALL_STATUSES, resetSignals } from './test-fixtures.js';
 
 describe('filteredJobs', () => {
   beforeEach(resetSignals);
 
-  it('returns all jobs when no filter is active', () => {
+  it('returns every visible job when no filter is active (noise hidden)', () => {
     jobs.value = FIXTURES;
-    assert.equal(filteredJobs.value.length, FIXTURES.length);
-    assert.deepEqual(filteredJobs.value, FIXTURES);
+    assert.equal(filteredJobs.value.length, COUNTS.ours + COUNTS.other);
   });
 
-  it('categoryFilter="mine" → only user-domain non-apple jobs', () => {
+  it('categoryFilter="ours" → only the deployments you classified as yours', () => {
     jobs.value = FIXTURES;
-    categoryFilter.value = 'mine';
+    categoryFilter.value = 'ours';
     const labels = filteredJobs.value.map(j => j.label);
     assert.deepEqual(labels, [
       'com.example.myapp',
@@ -31,28 +32,34 @@ describe('filteredJobs', () => {
     ]);
   });
 
-  it('categoryFilter="system" → only com.apple.* jobs', () => {
+  it('categoryFilter="other" → only unclassified jobs', () => {
     jobs.value = FIXTURES;
-    categoryFilter.value = 'system';
+    categoryFilter.value = 'other';
+    assert.deepEqual(filteredJobs.value.map(j => j.label), ['com.example.legacy']);
+  });
+
+  it('categoryFilter="noise" → the vendor/OS jobs, once they are shown', () => {
+    jobs.value = FIXTURES;
+    showNoise.value = true;
+    categoryFilter.value = 'noise';
     const labels = filteredJobs.value.map(j => j.label);
     assert.deepEqual(labels, [
       'com.apple.spotlight',
       'com.apple.WindowServer',
-    ]);
-  });
-
-  it('categoryFilter="thirdparty" → only global-domain non-apple jobs', () => {
-    jobs.value = FIXTURES;
-    categoryFilter.value = 'thirdparty';
-    const labels = filteredJobs.value.map(j => j.label);
-    assert.deepEqual(labels, [
       'com.docker.vmnetd',
       'com.microsoft.autoupdate',
     ]);
   });
 
-  it('statusFilter="running" → only running jobs', () => {
+  it('statusFilter="running" → only running jobs (noise stays hidden)', () => {
     jobs.value = FIXTURES;
+    statusFilter.value = 'running';
+    assert.deepEqual(filteredJobs.value.map(j => j.label), ['org.homebrew.mxcl.redis']);
+  });
+
+  it('statusFilter="running" + showNoise → every running job', () => {
+    jobs.value = FIXTURES;
+    showNoise.value = true;
     statusFilter.value = 'running';
     const labels = filteredJobs.value.map(j => j.label);
     assert.deepEqual(labels, [
@@ -62,59 +69,35 @@ describe('filteredJobs', () => {
     ]);
   });
 
-  it('statusFilter="error" → only error jobs', () => {
+  it('statusFilter="disabled" → the job retired on purpose', () => {
     jobs.value = FIXTURES;
-    statusFilter.value = 'error';
-    const labels = filteredJobs.value.map(j => j.label);
-    assert.deepEqual(labels, [
-      'com.docker.vmnetd',
-      'com.myco.agent',
-    ]);
+    statusFilter.value = 'disabled';
+    assert.deepEqual(filteredJobs.value.map(j => j.label), ['com.example.legacy']);
   });
 
-  it('onlyMine=true → only user-domain non-apple jobs', () => {
+  it('statusFilter="error" → only error jobs (noise stays hidden)', () => {
     jobs.value = FIXTURES;
-    onlyMine.value = true;
-    const labels = filteredJobs.value.map(j => j.label);
-    assert.deepEqual(labels, [
-      'com.example.myapp',
-      'org.homebrew.mxcl.redis',
-      'com.myco.agent',
-    ]);
-  });
-
-  it('combined: onlyMine + statusFilter="error" → user error jobs only', () => {
-    jobs.value = FIXTURES;
-    onlyMine.value = true;
     statusFilter.value = 'error';
-    const labels = filteredJobs.value.map(j => j.label);
-    assert.deepEqual(labels, ['com.myco.agent']);
+    assert.deepEqual(filteredJobs.value.map(j => j.label), ['com.myco.agent']);
   });
 
   it('combined: categoryFilter + searchQuery → intersection of both', () => {
     jobs.value = FIXTURES;
-    categoryFilter.value = 'system';
-    searchQuery.value = 'spotlight';
-    const labels = filteredJobs.value.map(j => j.label);
-    assert.deepEqual(labels, ['com.apple.spotlight']);
+    categoryFilter.value = 'ours';
+    searchQuery.value = 'redis';
+    assert.deepEqual(filteredJobs.value.map(j => j.label), ['org.homebrew.mxcl.redis']);
   });
 
-  it('search query preserved across filter changes', () => {
+  it('search query is preserved across filter changes', () => {
     jobs.value = FIXTURES;
     searchQuery.value = 'com.';
+    assert.ok(filteredJobs.value.length > 0);
 
-    // All matching 'com.'
-    const before = filteredJobs.value.length;
-    assert.ok(before > 0);
-
-    // Change category filter — search should still apply
-    categoryFilter.value = 'mine';
-    const after = filteredJobs.value;
-    for (const j of after) {
+    categoryFilter.value = 'ours';
+    for (const j of filteredJobs.value) {
       assert.ok(j.label.toLowerCase().includes('com.'));
     }
 
-    // Change status filter — search still applies
     statusFilter.value = 'stopped';
     for (const j of filteredJobs.value) {
       assert.ok(j.label.toLowerCase().includes('com.'));
@@ -126,53 +109,70 @@ describe('filteredJobs', () => {
 describe('categoryCounts', () => {
   beforeEach(resetSignals);
 
-  it('computed from full jobs list, not filteredJobs', () => {
+  it('computed from the full jobs list, not filteredJobs', () => {
     jobs.value = FIXTURES;
-    // Apply a status filter that reduces filteredJobs
     statusFilter.value = 'error';
-    // categoryCounts should still reflect ALL jobs
     const counts = categoryCounts.value;
-    assert.equal(counts.all, 7);
-    assert.equal(counts.mine, 3);      // myapp, redis, myco.agent
-    assert.equal(counts.system, 2);    // spotlight, WindowServer
-    assert.equal(counts.thirdparty, 2); // docker, microsoft
+    assert.equal(counts.all, COUNTS.all);
+    assert.equal(counts.ours, COUNTS.ours);
+    assert.equal(counts.noise, COUNTS.noise);
+    assert.equal(counts.other, COUNTS.other);
   });
 });
 
 describe('statusCounts', () => {
   beforeEach(resetSignals);
 
-  it('computed from full jobs list, not filteredJobs', () => {
+  it('computed from the full jobs list, not filteredJobs', () => {
     jobs.value = FIXTURES;
-    // Apply a category filter that reduces filteredJobs
-    categoryFilter.value = 'mine';
-    // statusCounts should still reflect ALL jobs
+    categoryFilter.value = 'ours';
+    const counts = statusCounts.value;
+    assert.equal(counts.all, COUNTS.all);
+    assert.equal(counts.running, 3);
+    assert.equal(counts.stopped, 2);
+    assert.equal(counts.error, 2);
+    assert.equal(counts.disabled, 1);
+  });
+
+  it('has a key for every launchd status, defaulting to 0', () => {
+    jobs.value = [];
+    const counts = statusCounts.value;
+    for (const key of ['running', 'scheduled', 'completed', 'stopped', 'error', 'offline', 'disabled']) {
+      assert.equal(counts[key], 0, `${key} should default to 0`);
+    }
+  });
+
+  it('counts all seven statuses when present', () => {
+    jobs.value = WITH_ALL_STATUSES;
     const counts = statusCounts.value;
     assert.equal(counts.all, 7);
-    assert.equal(counts.running, 3);   // spotlight, WindowServer, redis
-    assert.equal(counts.stopped, 2);   // myapp, microsoft
-    assert.equal(counts.error, 2);     // docker, myco.agent
+    for (const key of ['running', 'scheduled', 'completed', 'stopped', 'error', 'offline', 'disabled']) {
+      assert.equal(counts[key], 1, `${key} should count 1`);
+    }
+  });
+});
+
+// The write-mode switch is server state, but the UI reads it through these
+// signals, so the failure mode worth testing is "unknown → treat as read-only?"
+// (it is not: the buttons stay enabled until the server says otherwise, because
+// the server refuses the action anyway and the 403 carries the reason).
+describe('access signals', () => {
+  beforeEach(() => { accessInfo.value = null; });
+
+  it('readOnly is false until the server reports the state', () => {
+    assert.equal(readOnly.value, false);
   });
 
-  it('includes scheduled, completed, offline keys (default 0)', () => {
-    jobs.value = FIXTURES;
-    const counts = statusCounts.value;
-    assert.equal(counts.scheduled, 0);
-    assert.equal(counts.completed, 0);
-    assert.equal(counts.offline, 0);
+  it('readOnly follows read_only from GET /api/settings/access', () => {
+    accessInfo.value = { read_only: true, locked: false, source: 'config' };
+    assert.equal(readOnly.value, true);
+
+    accessInfo.value = { read_only: false, locked: false, source: 'config' };
+    assert.equal(readOnly.value, false);
   });
 
-  it('counts the 3 new statuses when present in jobs', () => {
-    jobs.value = [
-      { label: 'a', domain: 'user', status: 'scheduled' },
-      { label: 'b', domain: 'user', status: 'scheduled' },
-      { label: 'c', domain: 'user', status: 'completed' },
-      { label: 'd', domain: 'global', status: 'offline' },
-    ];
-    const counts = statusCounts.value;
-    assert.equal(counts.all, 4);
-    assert.equal(counts.scheduled, 2);
-    assert.equal(counts.completed, 1);
-    assert.equal(counts.offline, 1);
+  it('a locked server is still read-only', () => {
+    accessInfo.value = { read_only: true, locked: true, lock_reason: 'started with --read-only' };
+    assert.equal(readOnly.value, true);
   });
 });

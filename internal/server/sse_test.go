@@ -11,8 +11,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/A404coder/launch-pilot/internal/diagnose"
-	"github.com/A404coder/launch-pilot/internal/launchd"
+	"github.com/A404coder/deployboard/internal/diagnose"
+	"github.com/A404coder/deployboard/internal/launchd"
 )
 
 // ---------------------------------------------------------------------------

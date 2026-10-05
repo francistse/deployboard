@@ -1,17 +1,17 @@
-# Launch Pilot — Product State
+# Deployboard — Product State
 
 > **产品档案**：跨 iteration 累积的产品事实记录。由 forge release 成功后自动追加，feature mode 启动时读此档案建立上下文。
 
-**Last updated**: 2026-04-19 (after v0.3.0 release)
-**Slug**: `launch-pilot`
-**Current version**: v0.3.0
-**Repo**: https://github.com/RoboZephyr/launch-pilot
+**Last updated**: 2026-10-05 (version line reset to v0.0.1)
+**Slug**: `deployboard`
+**Current version**: v0.0.1
+**Repo**: https://github.com/francistse/deployboard
 
 ---
 
 ## Product Overview
 
-**Name**: Launch Pilot（原名 Launchboard）
+**Name**: Deployboard（原名 Launchboard）
 
 **Objective**: 让 macOS 开发者通过 `brew install` 一条命令安装、在浏览器中一眼看到所有 launchd job 的运行状态，并能一键管理和诊断故障 —— 替代手动 `launchctl` CLI + 手写 plist 的痛苦工作流。
 

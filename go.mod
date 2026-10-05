@@ -1,4 +1,4 @@
-module github.com/A404coder/launch-pilot
+module github.com/A404coder/deployboard
 
 go 1.26.2
 

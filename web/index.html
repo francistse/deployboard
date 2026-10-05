@@ -3,8 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Launch Pilot</title>
+  <title>Deployboard</title>
   <link rel="stylesheet" href="./styles/main.css">
+  <script>
+    // Apply the saved theme before first paint so switching does not flash.
+    // "system" (or no stored value) leaves the media query in charge.
+    (function () {
+      try {
+        var theme = localStorage.getItem('deployboard:theme');
+        if (!theme) {
+          var legacyTheme = localStorage.getItem('launch-pilot:theme');
+          if (legacyTheme) {
+            theme = legacyTheme;
+            localStorage.setItem('deployboard:theme', legacyTheme);
+          }
+        }
+        document.documentElement.setAttribute('data-theme', theme || 'system');
+      } catch (e) { /* private browsing */ }
+      try {
+        var stored = localStorage.getItem('deployboard:locale');
+        if (!stored) {
+          var legacyLocale = localStorage.getItem('launch-pilot:locale');
+          if (legacyLocale) {
+            stored = legacyLocale;
+            localStorage.setItem('deployboard:locale', legacyLocale);
+          }
+        }
+        var lang = stored;
+        var known = lang === 'en' || lang === 'ja' || lang === 'zh-Hant' || lang === 'zh-Hans';
+        if (!known) {
+          var nav = ((navigator.language || navigator.userLanguage || '') + '').toLowerCase().replace(/_/g, '-');
+          if (nav.indexOf('ja') === 0) lang = 'ja';
+          else if (nav.indexOf('zh') === 0) {
+            if (nav.indexOf('zh-tw') === 0 || nav.indexOf('zh-hk') === 0 || nav.indexOf('zh-mo') === 0 || nav.indexOf('hant') !== -1) lang = 'zh-Hant';
+            else lang = 'zh-Hans';
+          } else lang = 'en';
+        }
+        document.documentElement.lang = lang || 'en';
+      } catch (e2) { /* private browsing */ }
+    })();
+  </script>
   <script type="importmap">
   {
     "imports": {

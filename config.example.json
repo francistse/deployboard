@@ -1,0 +1,39 @@
+{
+  "port": 9410,
+  "read_only": false,
+  "probe_ttl_seconds": 10,
+  "no_probe": false,
+  "print_ttl_seconds": 15,
+  "inventory": {
+    "show_noise_default": false,
+    "restart_warn_threshold": 50,
+    "groups": [
+      {"name": "Example App", "match": ["com.example.app.*"]},
+      {"name": "Infra", "match": ["com.example.infra.*", "com.ollama.*"]}
+    ],
+    "ours": ["com.example.*"],
+    "hidden": [
+      "com.apple.*", "application.*", "com.google.*", "com.dropbox.*",
+      "com.spotify.*", "com.docker.*", "com.github.CopilotForCode.*",
+      "com.github.CopilotForXcode.*", "io.tailscale.*", "com.todesktop.*",
+      "com.microsoft.*", "com.openssh.*", "org.virtualbox.*",
+      "com.getdropbox.*", "ch.protonvpn.*"
+    ],
+    "derive_roots": ["~/Projects", "~/src", "~/code", "~/Developer", "~/work"]
+  },
+  "alerts": {
+    "enabled": true,
+    "cooldown_seconds": 900,
+    "notify_on_recovery": true,
+    "run_storm_delta": 25,
+    "state_file": "",
+    "quiet_hours": {"start": "23:30", "end": "08:00", "timezone": "Etc/UTC"},
+    "telegram": {
+      "enabled": true,
+      "chat_id": "",
+      "keychain_service": "deployboard-telegram",
+      "keychain_account": "bot_token",
+      "timeout_seconds": 10
+    }
+  }
+}

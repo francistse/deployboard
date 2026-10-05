@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { signal } from '@preact/signals';
 import { apiFetch } from '../lib/api.js';
+import { t } from '../lib/i18n.js';
 
 /** Local search filter for log content */
 const logSearch = signal('');
@@ -44,7 +45,7 @@ export function LogViewerView({
   search, onSearchInput, onLoadMore,
 }) {
   if (loading) {
-    return html`<div class="log-viewer"><p class="log-viewer__status">Loading logs\u2026</p></div>`;
+    return html`<div class="log-viewer"><p class="log-viewer__status">${t('logs.loading')}</p></div>`;
   }
   if (error) {
     return html`<div class="log-viewer"><p class="log-viewer__status log-viewer__status--error">${error}</p></div>`;
@@ -52,7 +53,7 @@ export function LogViewerView({
   if (!logs.stdoutAvailable && !logs.stderrAvailable) {
     return html`
       <div class="log-viewer">
-        <p class="log-viewer__status">${logs.message || 'No log paths configured in plist'}</p>
+        <p class="log-viewer__status">${logs.message || t('logs.noPaths')}</p>
       </div>
     `;
   }
@@ -75,7 +76,8 @@ export function LogViewerView({
         <input
           type="text"
           class="log-viewer__search-input"
-          placeholder="Filter logs\u2026"
+          placeholder=${t('logs.filter')}
+          aria-label=${t('logs.filter')}
           value=${search}
           onInput=${onSearchInput}
         />
@@ -83,22 +85,22 @@ export function LogViewerView({
       ${logs.stdoutAvailable && html`
         <div class="log-viewer__section">
           <h4 class="log-viewer__heading">stdout <code class="log-viewer__path">${logs.stdoutPath}</code></h4>
-          <pre class="log-viewer__content">${filterLines(logs.stdout) || '(empty)'}</pre>
+          <pre class="log-viewer__content">${filterLines(logs.stdout) || t('logs.empty')}</pre>
         </div>
       `}
       ${logs.stderrAvailable && html`
         <div class="log-viewer__section">
           <h4 class="log-viewer__heading">stderr <code class="log-viewer__path">${logs.stderrPath}</code></h4>
-          <pre class="log-viewer__content log-viewer__content--stderr">${filterLines(logs.stderr) || '(empty)'}</pre>
+          <pre class="log-viewer__content log-viewer__content--stderr">${filterLines(logs.stderr) || t('logs.empty')}</pre>
         </div>
       `}
       ${showLoadMore && html`
         <button class="btn btn--sm btn--outline log-viewer__load-more" onClick=${onLoadMore} disabled=${loadingMore}>
-          ${loadingMore ? 'Loading\u2026' : `Load more (currently ${lines} lines)`}
+          ${loadingMore ? t('logs.loadingMore') : t('logs.loadMore', { n: lines })}
         </button>
       `}
       ${showDone && html`
-        <p class="log-viewer__done">Showing all ${totalLines} lines</p>
+        <p class="log-viewer__done">${t('logs.showingAll', { n: totalLines })}</p>
       `}
     </div>
   `;

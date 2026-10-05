@@ -6,14 +6,23 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/A404coder/launch-pilot/internal/plist"
+	"github.com/A404coder/deployboard/internal/plist"
 )
 
 // Sentinel errors returned by Service methods.
 var (
 	ErrNotFound     = errors.New("job not found")
 	ErrInvalidLabel = errors.New("invalid label")
+	// ErrSelfRestart means Reload refused to bootout this process's own job.
+	// Bootout removes the job from launchd and SIGTERMs us before bootstrap
+	// can run, and KeepAlive does not apply to a job that is no longer loaded.
+	// Callers treat this as success and then call RestartSelf.
+	ErrSelfRestart = errors.New("refusing to bootout the dashboard's own job")
 )
+
+// SelfRestartNote is the API copy for a reload of this process. There is no
+// verified block: the handler is about to exit so launchd can respawn the job.
+const SelfRestartNote = "restarting the dashboard itself — launchd respawns it; the page reconnects in a few seconds"
 
 // LabelRe validates launchd job labels: alphanumeric, dots, hyphens, underscores.
 var LabelRe = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
@@ -41,6 +50,7 @@ const (
 	StatusStopped   JobStatus = "stopped"
 	StatusError     JobStatus = "error"
 	StatusOffline   JobStatus = "offline"
+	StatusDisabled  JobStatus = "disabled"
 )
 
 // Job holds merged data from launchctl list + plist file for a single launchd job.
@@ -54,6 +64,7 @@ type Job struct {
 	ProgramArgs           []string              `json:"programArgs"`
 	StandardOutPath       string                `json:"standardOutPath"`
 	StandardErrPath       string                `json:"standardErrPath"`
+	WorkingDirectory      string                `json:"workingDirectory,omitempty"`
 	RunAtLoad             bool                  `json:"runAtLoad"`
 	KeepAlive             bool                  `json:"keepAlive"`
 	Domain                string                `json:"domain"`
@@ -61,6 +72,34 @@ type Job struct {
 	LastRunAt             *time.Time            `json:"lastRunAt,omitempty"`
 	StartInterval         int                   `json:"startInterval,omitempty"`
 	StartCalendarInterval []plist.CalendarEntry `json:"startCalendarInterval,omitempty"`
+
+	// Fork additions. Empty when launchctl print enrichment is not enabled.
+	Category       string `json:"category"`
+	CategorySource string `json:"categorySource,omitempty"`
+	Group          string `json:"group"`
+	Runs           int    `json:"runs"`
+	Disabled       bool   `json:"disabled"`
+	PrintState     string `json:"printState"`
+	RestartWarn    bool   `json:"restartWarn"`
+	// UptimeSeconds is how long the current process has been running, from `ps`.
+	// Zero when the job is not running or the lookup is disabled.
+	UptimeSeconds int `json:"uptimeSeconds,omitempty"`
+	// RestartsRecent + WindowMinutes describe churn observed by the dashboard
+	// itself (the launchd runs counter is cumulative, so it cannot answer
+	// "is this flapping right now?").
+	RestartsRecent int   `json:"restartsRecent,omitempty"`
+	WindowMinutes  int   `json:"windowMinutes,omitempty"`
+	RunsSeries     []int `json:"runsSeries,omitempty"`
+	// RetiredAt is when the dashboard disabled this job (see internal/retire).
+	RetiredAt *time.Time `json:"retiredAt,omitempty"`
+	// Self is true when this job is the dashboard process itself. Stop and
+	// Disable are still offered — they mean "keep it down" — but bootout of
+	// this label drops the page until the next login or a manual bootstrap.
+	Self bool `json:"self,omitempty"`
+
+	// HasExit is true when `launchctl print` reported a last exit code.
+	// Omitted from JSON; metrics skip the series when it is false.
+	HasExit bool `json:"-"`
 }
 
 // DefaultRecentWindow is the default --recent-window value: how long after

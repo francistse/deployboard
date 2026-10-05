@@ -1,6 +1,45 @@
-# Launch Pilot
+# Deployboard
+
+[![CI](https://github.com/francistse/deployboard/actions/workflows/ci.yml/badge.svg)](https://github.com/francistse/deployboard/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/francistse/deployboard)](https://github.com/francistse/deployboard/releases)
+[![Platform: macOS 13+](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey.svg)](#requirements)
+[![Go](https://img.shields.io/badge/go-1.26-00ADD8.svg)](go.mod)
 
 Visual control console for macOS launchd services. View status, read logs, diagnose issues, and manage user-domain launch agents — all from your browser.
+
+> **This is a fork.** Upstream: [`RoboZephyr/launch-pilot`](https://github.com/RoboZephyr/launch-pilot) (MIT).
+> Base commit `5d9c07d`; upstream history is preserved so it can be rebased. Nothing upstream is removed.
+> See [`docs/UPSTREAM.md`](docs/UPSTREAM.md) for the full fork rationale and the rebase procedure.
+
+## Fork additions — Deployboard
+
+Upstream classifies jobs by domain, so "Mine" includes Dropbox, Chrome, Spotify, Tailscale and
+every updater — on a developer Mac, 545 jobs, mostly noise. The fork answers the question that matters
+instead: **which of MY deployed applications are up, broken, or intentionally off.**
+
+| Addition | What it does | Docs |
+|---|---|---|
+| **Ours / Other / Noise view** | Default view is your deployments only. Anything whose plist log/working dir/args live under `derive_roots` is auto-classified as yours (most of them here, 0 false positives across 528 vendor jobs); a short allowlist covers infra that lives outside the project tree. `Hide`/`Auto` per row from the UI. | `docs/INSTALL-macos.md` (config) |
+| **`launchctl print` truth** | `runs` (restart counter) and `print-disabled`, so a **disabled** plist stops looking like a failure. Upstream reads `launchctl list`, which has neither field. | below |
+| **Prometheus `/metrics`** | launchd state as time series — `deployboard_job_up`, `_runs`, `_last_exit_code`, `_disabled`, `_probe_*`. The only launchd→metrics exporter in this niche. | [`docs/METRICS.md`](docs/METRICS.md) |
+| **Telegram alerts + per-app toggles** | Transition-based alerts (error / offline / port unreachable / restart storm / recovery), 🔔 switch per application, cooldown + quiet hours, token from the macOS Keychain. | [`docs/ALERTS.md`](docs/ALERTS.md) |
+| **One-command macOS install** | `make install-macos` → binary to `~/bin`, LaunchAgent with `KeepAlive`, health check. Plus a Homebrew formula and a manual path. | [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md) |
+| **Write access you control** | Read-only mode refuses `reload`/`start`/`stop` server-side and disables the row buttons; the settings switch turns it back on (writes `read_only` to `config.json`, applied in ~2s, behind a confirmation). `--read-only` on the command line stays a **hard lock** the UI cannot undo, so a monitoring box still cannot be talked into killing a service. | `docs/INSTALL-macos.md` |
+| **`config.json` hot reload** | Edit the file (or click a classify action) → applied in ~2s, no restart. | `docs/INSTALL-macos.md` |
+| **Honest Stop, Disable/Enable** | Stop picks the mechanism that holds: `bootout` for a KeepAlive job (a signal would just restart it — the job stays listed as `offline` and Start bootstraps it back), `SIGTERM` otherwise. `Disable` retires a job across logins and reboots; `Enable` undoes it. | below |
+| **Verified actions** | Every action re-reads launchd before answering (`verified.ok` + a `verdict` when it did not take) and the UI re-checks two seconds later, so "succeeded" never means "we sent a command". | below |
+| **Group bulk actions** | Restart / Start / Stop / Retire every job in a group in one click, with the affected labels listed in the confirmation. | below |
+| **Restart-loop banner** | Churn measured over the dashboard's own window (not the cumulative counter), surfaced above the table with Stop/Retire actions and a per-row sparkline. | below |
+| **Uptime + retirement history** | `ps`-derived uptime per running job, and a local log of when each job was retired and by whom — launchd remembers the override, not the decision. | `~/.config/deployboard/retirements.json` |
+
+Seventh status value, on top of upstream's six:
+
+| Status | Meaning |
+|--------|---------|
+| `disabled` | listed by launchd but `launchctl print-disabled` says disabled and it has no live pid — retired on purpose, not a failure |
+
+## Upstream features
 
 ## Features
 
@@ -51,30 +90,46 @@ Visual control console for macOS launchd services. View status, read logs, diagn
 
 ## Install
 
-### Homebrew
+### One command (recommended)
 
 ```bash
-brew install RoboZephyr/tap/launch-pilot
+git clone https://github.com/francistse/deployboard.git
+cd deployboard
+bash install.sh                      # = make install-macos
 ```
+
+Builds the binary, installs it to `~/bin/deployboard`, writes a LaunchAgent
+(`com.deployboard.agent`, `RunAtLoad` + `KeepAlive` so it comes back after a reboot or a
+crash) and health-checks it. No `sudo`, idempotent; `--dry-run`, `--uninstall`, `--purge`,
+`--prefix`, `--port`, `--config`, `--binary` and `--no-agent` are available.
+Full detail: [`docs/INSTALL-macos.md`](docs/INSTALL-macos.md).
+
+### Homebrew — planned, not yet available
+
+Deployboard is not installable via Homebrew yet; the formula in `Formula/deployboard.rb` is a
+starting point for a later phase, not a working install (it has no fetchable public source).
+
+**Do not run `brew install RoboZephyr/tap/launch-pilot`** — that tap belongs to upstream and
+installs upstream launch-pilot, not Deployboard.
 
 ### Build from source
 
 ```bash
-git clone git@github.com:RoboZephyr/launch-pilot.git
-cd launch-pilot
+git clone https://github.com/francistse/deployboard.git
+cd deployboard
 make build
 ```
 
-This produces a `launch-pilot` binary in the project root. The frontend is embedded in the binary — no separate build step or runtime dependencies needed.
+This produces a `deployboard` binary in the project root. The frontend is embedded in the binary — no separate build step or runtime dependencies needed.
 
 ## Usage
 
 ```bash
-launch-pilot                          # random port, auto-opens browser
-launch-pilot --port 8080              # listen on explicit port
-launch-pilot --no-open                # start server without opening browser
-launch-pilot --recent-window 30m      # mark jobs as "completed" if they ran in the last 30m
-launch-pilot --version                # print version and exit
+deployboard                          # random port, auto-opens browser
+deployboard --port 8080              # listen on explicit port
+deployboard --no-open                # start server without opening browser
+deployboard --recent-window 30m      # mark jobs as "completed" if they ran in the last 30m
+deployboard --version                # print version and exit
 ```
 
 The server binds to `127.0.0.1` (localhost only). Press `Ctrl+C` to shut down gracefully (5-second timeout).
@@ -201,7 +256,7 @@ The suite starts an isolated server on `127.0.0.1:18080`.
 ### Project structure
 
 ```
-cmd/launch-pilot/       Go entrypoint (CLI flags, server startup)
+cmd/deployboard/         Go entrypoint (CLI flags, server startup)
 internal/
   launchd/              Job model, launchctl parser, service layer, DeriveStatus
   diagnose/             6-check diagnostic engine
@@ -214,7 +269,26 @@ web/
   lib/                  State signals, classification logic, SSE client, API client
   styles/               CSS (single main.css, CSS variables for theming)
   vendor/               Vendored ESM: Preact, htm, Signals
+landing/                Static marketing site (Next.js export) → GitHub Pages
+.github/workflows/      pages.yml — builds landing/ and deploys it to Pages
 ```
+
+## Landing site
+
+`landing/` is a static Next.js export for the project's public page, deployed to
+GitHub Pages by `.github/workflows/pages.yml` on any push that touches it. All
+copy lives in `landing/src/content.ts`.
+
+```bash
+cd landing
+npm ci
+npm run dev          # local preview
+npm run build        # static export -> landing/out
+```
+
+Enable it once per repository: **Settings → Pages → Source: GitHub Actions**.
+See [`landing/README.md`](landing/README.md) for the base-path details and the
+non-GitHub hosting options.
 
 ## License
 

@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { apiFetch } from '../lib/api.js';
+import { t, localizeCheck } from '../lib/i18n.js';
 
 /** Severity icon mapping: ok=green circle, warning=yellow triangle, error=red cross */
 const severityIcon = { ok: '\u2705', warning: '\u26a0\ufe0f', error: '\u274c' };
@@ -26,7 +27,7 @@ export function DiagnosePanel({ label }) {
   }, [label]);
 
   if (loading) {
-    return html`<div class="diagnose-panel"><p class="diagnose-panel__status">Running diagnostics\u2026</p></div>`;
+    return html`<div class="diagnose-panel"><p class="diagnose-panel__status">${t('diag.running')}</p></div>`;
   }
 
   if (error) {
@@ -34,13 +35,15 @@ export function DiagnosePanel({ label }) {
   }
 
   if (!report || !report.checks || report.checks.length === 0) {
-    return html`<div class="diagnose-panel"><p class="diagnose-panel__status">No diagnostic checks available.</p></div>`;
+    return html`<div class="diagnose-panel"><p class="diagnose-panel__status">${t('diag.empty')}</p></div>`;
   }
 
   return html`
     <div class="diagnose-panel">
       <ul class="diagnose-panel__list">
-        ${report.checks.map(check => html`
+        ${report.checks.map(raw => {
+          const check = localizeCheck(raw);
+          return html`
           <li key=${check.id} class="diagnose-panel__check">
             <div class="diagnose-panel__header">
               <span class="diagnose-panel__icon severity--${check.severity}">${severityIcon[check.severity] || '?'}</span>
@@ -51,7 +54,8 @@ export function DiagnosePanel({ label }) {
               <p class="diagnose-panel__suggestion">${check.suggestion}</p>
             `}
           </li>
-        `)}
+        `;
+        })}
       </ul>
     </div>
   `;

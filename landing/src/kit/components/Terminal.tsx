@@ -8,7 +8,7 @@ export interface TerminalProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export function Terminal({
-  title = "~ launch-pilot",
+  title = "~ deployboard",
   prompt,
   children,
   className,

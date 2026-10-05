@@ -1,0 +1,62 @@
+name: CI
+
+# GitHub-only on purpose, same as pages.yml: the project's self-hosted mirror reads
+# .github/workflows too and would queue a run it cannot satisfy. The guard keeps the
+# mirror's runs skipped (green) instead of failing.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    if: ${{ github.server_url == 'https://github.com' }}
+    # macOS, not ubuntu: the tests exercise `launchctl` (the whole point of the
+    # project), which does not exist on Linux — /api/jobs 500s there. Public-repo
+    # macOS runners are free.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go vet ./cmd/... ./internal/... ./web/...
+      - run: go test ./cmd/... ./internal/... ./web/... -count=1
+
+  web:
+    if: ${{ github.server_url == 'https://github.com' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm test
+
+  landing:
+    if: ${{ github.server_url == 'https://github.com' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

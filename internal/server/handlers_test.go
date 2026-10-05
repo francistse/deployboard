@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 	"testing/fstest"
 
-	"github.com/A404coder/launch-pilot/internal/diagnose"
-	"github.com/A404coder/launch-pilot/internal/launchd"
+	"github.com/A404coder/deployboard/internal/diagnose"
+	"github.com/A404coder/deployboard/internal/launchd"
 )
 
 // ---------------------------------------------------------------------------
@@ -17,16 +19,43 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockJobService struct {
-	jobs      []launchd.Job
-	listErr   error
-	reloadErr error
-	startErr  error
-	stopErr   error
-	logs      *launchd.LogOutput
-	logsErr   error
+	jobs       []launchd.Job
+	listErr    error
+	reloadErr  error
+	startErr   error
+	stopErr    error
+	disableErr error
+	enableErr  error
+
+	// which labels had which action applied, for the handler assertions
+	applied []string
+	logs    *launchd.LogOutput
+	logsErr error
 
 	// Track ReadLogs calls to verify default lines parameter.
 	lastReadLogsLines int
+
+	restartSelfCalls int
+	restartSelfErr   error
+	// beforeRestart runs at the start of RestartSelf, so a test can see that
+	// the response was already written.
+	beforeRestart func()
+}
+
+func (m *mockJobService) Disable(label string) error {
+	if m.disableErr != nil {
+		return m.disableErr
+	}
+	m.applied = append(m.applied, "disable:"+label)
+	return nil
+}
+
+func (m *mockJobService) Enable(label string) error {
+	if m.enableErr != nil {
+		return m.enableErr
+	}
+	m.applied = append(m.applied, "enable:"+label)
+	return nil
 }
 
 func (m *mockJobService) ListJobs() ([]launchd.Job, error) {
@@ -46,8 +75,15 @@ func (m *mockJobService) GetJob(label string) (*launchd.Job, error) {
 }
 
 func (m *mockJobService) Reload(string) error { return m.reloadErr }
-func (m *mockJobService) Start(string) error  { return m.startErr }
-func (m *mockJobService) Stop(string) error   { return m.stopErr }
+func (m *mockJobService) RestartSelf() error {
+	m.restartSelfCalls++
+	if m.beforeRestart != nil {
+		m.beforeRestart()
+	}
+	return m.restartSelfErr
+}
+func (m *mockJobService) Start(string) error { return m.startErr }
+func (m *mockJobService) Stop(string) error  { return m.stopErr }
 func (m *mockJobService) ReadLogs(_ string, lines int) (*launchd.LogOutput, error) {
 	m.lastReadLogsLines = lines
 	if m.logsErr != nil {
@@ -450,6 +486,50 @@ func TestActionReload_ServiceError_Returns500(t *testing.T) {
 	if body["error"] == nil || body["error"] == "" {
 		t.Error("error message is empty")
 	}
+	if mock.restartSelfCalls != 0 {
+		t.Errorf("a real reload failure must not restart the dashboard, calls = %d", mock.restartSelfCalls)
+	}
+}
+
+// A reload of the dashboard itself is success: the note goes out, then
+// RestartSelf. There is no verified block, because we are about to exit.
+func TestActionReload_SelfAnswersThenRestarts(t *testing.T) {
+	const label = "com.deployboard.launch-pilot"
+	mock := &mockJobService{
+		reloadErr: fmt.Errorf("reload %s: %w", label, launchd.ErrSelfRestart),
+	}
+	router := testRouter(mock)
+
+	w := httptest.NewRecorder()
+	mock.beforeRestart = func() {
+		if w.Code != http.StatusOK {
+			t.Errorf("RestartSelf ran before the status was written (code %d)", w.Code)
+		}
+		if !strings.Contains(w.Body.String(), launchd.SelfRestartNote) {
+			t.Errorf("RestartSelf ran before the body was written: %s", w.Body.String())
+		}
+	}
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/jobs/"+label+"/reload", nil))
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%s)", w.Code, w.Body.String())
+	}
+	var body map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body["ok"] != true || body["self"] != true || body["action"] != "reload" || body["label"] != label {
+		t.Fatalf("body = %v", body)
+	}
+	if body["note"] != launchd.SelfRestartNote {
+		t.Fatalf("note = %v", body["note"])
+	}
+	if _, ok := body["verified"]; ok {
+		t.Fatalf("self reload must not include verified, got %v", body["verified"])
+	}
+	if mock.restartSelfCalls != 1 {
+		t.Fatalf("RestartSelf calls = %d, want 1", mock.restartSelfCalls)
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -667,5 +747,72 @@ func TestDiagnose_InvalidLabel_Returns400(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", w.Code)
+	}
+}
+
+// The row buttons the fork added: Disable retires a job in launchd, Enable undoes
+// it. Both are mutating, so both go through the read-only guard.
+func TestActionHandler_DisableAndEnable(t *testing.T) {
+	svc := &mockJobService{}
+	h := NewRouterWithFork(svc, &diagnose.Engine{}, fstest.MapFS{}, ForkDeps{})
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/jobs/com.example.app/disable", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("disable: status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "will not start it again") {
+		t.Errorf("disable response should explain the effect, got %s", body)
+	}
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/jobs/com.example.app/enable", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("enable: status = %d, want 200 (%s)", rec.Code, rec.Body.String())
+	}
+	if want := []string{"disable:com.example.app", "enable:com.example.app"}; !reflect.DeepEqual(svc.applied, want) {
+		t.Errorf("applied = %v, want %v", svc.applied, want)
+	}
+}
+
+func TestActionHandler_StopExplainsKeepAlive(t *testing.T) {
+	svc := &mockJobService{jobs: []launchd.Job{
+		{Label: "com.example.keepalive", KeepAlive: true},
+		{Label: "com.example.plain"},
+	}}
+	h := NewRouterWithFork(svc, &diagnose.Engine{}, fstest.MapFS{}, ForkDeps{})
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/jobs/com.example.keepalive/stop", nil))
+	if body := rec.Body.String(); !strings.Contains(body, "KeepAlive") {
+		t.Errorf("stop on a KeepAlive job should say why it was unloaded, got %s", body)
+	}
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/jobs/com.example.plain/stop", nil))
+	if body := rec.Body.String(); strings.Contains(body, "note") {
+		t.Errorf("a plain job needs no note, got %s", body)
+	}
+}
+
+func TestActionHandler_UnknownActionIs404(t *testing.T) {
+	// The router only registers known actions, so this exercises the dispatcher's
+	// guard directly: an action with no case must fail loudly, never report ok.
+	// PathValue only exists when the pattern matched, so wrap it in a mux.
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/jobs/{label}/explode", actionHandler(&mockJobService{}, "explode"))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/jobs/com.example.app/explode", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404 for an unregistered action", rec.Code)
+	}
+}
+
+func TestActionHandler_UnroutedActionIs405(t *testing.T) {
+	h := NewRouterWithFork(&mockJobService{}, &diagnose.Engine{}, fstest.MapFS{}, ForkDeps{})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/jobs/com.example.app/explode", nil))
+	if rec.Code == http.StatusOK {
+		t.Errorf("an unrouted action must not report success")
 	}
 }

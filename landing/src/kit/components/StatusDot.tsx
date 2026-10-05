@@ -14,6 +14,7 @@ const dotColorByStatus: Record<ServiceStatus, string> = {
   completed: colors.status.completed.fg,
   stopped: colors.status.stopped.fg,
   error: colors.status.error.fg,
+  disabled: colors.status.disabled.fg,
   offline: colors.status.offline.fg,
 };
 
@@ -23,6 +24,7 @@ const bgByStatus: Record<ServiceStatus, string> = {
   completed: colors.status.completed.bg,
   stopped: colors.status.stopped.bg,
   error: colors.status.error.bg,
+  disabled: colors.status.disabled.bg,
   offline: colors.status.offline.bg,
 };
 
@@ -32,6 +34,7 @@ const borderByStatus: Record<ServiceStatus, string> = {
   completed: colors.status.completed.border,
   stopped: colors.status.stopped.border,
   error: colors.status.error.border,
+  disabled: colors.status.disabled.border,
   offline: colors.status.offline.border,
 };
 

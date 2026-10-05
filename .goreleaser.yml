@@ -1,14 +1,14 @@
 version: 2
 
-project_name: launch-pilot
+project_name: deployboard
 
 before:
   hooks:
     - go test ./cmd/... ./internal/... ./web/...
 
 builds:
-  - main: ./cmd/launch-pilot
-    binary: launch-pilot
+  - main: ./cmd/deployboard
+    binary: deployboard
     goos:
       - darwin
     goarch:
@@ -32,13 +32,12 @@ changelog:
       - "^test:"
       - "^ci:"
 
-brews:
-  - repository:
-      owner: RoboZephyr
-      name: homebrew-tap
-    directory: Formula
-    homepage: "https://github.com/RoboZephyr/launch-pilot"
-    description: "Visual control console for macOS launchd services"
-    license: MIT
-    install: |
-      bin.install "launch-pilot"
+# brews: DISABLED for phase 1 — Deployboard ships install.sh only.
+#
+# This block used to publish a formula into RoboZephyr/homebrew-tap, which is UPSTREAM's tap:
+# goreleaser would have written a Deployboard formula into somebody else's project. A release
+# must not do that, so the block is removed rather than left commented-out (YAML has no block
+# comments, and a "comment above an active block" is still an active block).
+#
+# Phase 2 restores this pointed at our own tap, with the homepage/description and any binary
+# rename decided there. See the Homebrew card on the kanban board.

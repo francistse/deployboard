@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/A404coder/launch-pilot/internal/plist"
+	"github.com/A404coder/deployboard/internal/plist"
 )
 
 func intPtr(v int) *int { return &v }

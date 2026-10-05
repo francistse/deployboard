@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/A404coder/launch-pilot/internal/plist"
+	"github.com/A404coder/deployboard/internal/plist"
 )
 
 // ---------------------------------------------------------------------------

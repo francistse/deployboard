@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.1] — 2026-10-05
+
+Deployboard restarts its own version line at 0.0.1. Before this, the binary and the landing page
+reported `v0.3.1` — a version inherited from upstream `RoboZephyr/launch-pilot`, which made a fork
+with its own feature set (inventory view, Prometheus metrics, Telegram alerts, one-command install)
+look like it was three minor releases into somebody else's roadmap.
+
+### Changed
+
+- **Version line reset to 0.0.1.** `Makefile` no longer derives the version from `git describe --tags`
+  (which resolves to the inherited upstream tag `v0.3.1`); it defaults to an explicit `0.0.1`,
+  overridable per build with `make build VERSION=x.y.z`. The upstream tags `v0.1.0`–`v0.3.1` are kept
+  as inherited history — they are rebase markers, not Deployboard releases.
+- `Formula/deployboard.rb`, `landing/package.json`, the landing page (`src/content.ts`, version +
+  hero eyebrow) and `PRODUCT-STATE.md` now report 0.0.1.
+
+### Notes
+
+- The `Formula/deployboard.rb` homepage/url point at `github.com/francistse/deployboard`. The
+  formula stays a stub until a Homebrew tap exists; `bash install.sh` is the supported install path.
+
 ## [0.3.1] — 2026-04-19
 
 Post-v0.3.0 UI polish: 7 P1 review fixes hitting existing seams — zero new runtime deps, zero backend schema changes.
@@ -10,7 +31,7 @@ Post-v0.3.0 UI polish: 7 P1 review fixes hitting existing seams — zero new run
 
 - **US-P1 status-dot visibility**: moved the 6 status colors to a `.status-dot-trigger::before` 8×8 swatch so the button's `background: transparent` no longer overwrites the state color. Dark-mode variables retuned to keep ≥3:1 contrast across `running`/`completed`/`stopped`/`offline`
 - **US-P2 tooltip freshness**: `StatusTooltip` now derives the current job via `useComputed(() => jobs.value.find(...))` and watches label disappearance through `useSignalEffect`, so content updates on each 5 s SSE snapshot and the overlay closes immediately when the label is removed
-- **US-P3 startup banner**: `Launchboard running at …` → `Launch Pilot running at …`; banner extracted into a `printBanner(w, url)` helper with a stdout-capturing regex test (`TestStartupBanner_LaunchPilot`)
+- **US-P3 startup banner**: `Launchboard running at …` → `launch-pilot running at …`; banner extracted into a `printBanner(w, url)` helper with a stdout-capturing regex test (`TestStartupBanner_Deployboard`)
 - **US-P4 log viewer Load-more**: client-side `computeHasMore(logs, requested)` replaces the missing backend `hasMore` field — hides the button when a stream returns fewer than `requested` lines, surfaces `Showing all N lines` terminal state, respects the 10 000-line cap
 - **US-P5 tooltip perf**: opacity fade trimmed to 60 ms; Playwright `tooltip-perf-a11y.spec.mjs` asserts enter p95 ≤ 200 ms / leave p95 ≤ 100 ms over 20 cycles
 - **US-P6 Esc focus return**: Esc handling consolidated onto `StatusTooltip`; when entered via focus the anchor regains focus before hide (per WAI-ARIA APG tooltip pattern), hover-entered tooltips do not move `activeElement`
@@ -33,7 +54,7 @@ Status-dot fast tooltip: replaces browser UA `title` (500–1500 ms delay, unsty
 - **Pure `buildStatusTooltipParts(job)`**: exposes the tooltip string as an ordered array so the overlay renders one line per part. Contract `buildStatusTooltip(job) === buildStatusTooltipParts(job).join(' — ')` holds — no duplicate formatting branches
 - **Pure `placeTooltip(anchor, tip, viewport)`**: viewport-aware positioning — above the anchor when space allows, flips below when top-space < 4 px, clamps horizontally into `[4, viewport.w - tip.w - 4]`
 - **Live content follow**: tooltip text re-derives from `jobs.value` on every SSE refresh (5 s cadence), so an open tooltip updates instead of showing stale data
-- **Playwright E2E bootstrap**: `@playwright/test` 1.x as devDependency, `playwright.config.mjs` with `webServer` auto-starting `launch-pilot --no-open`, and `e2e/tooltip.spec.mjs` covering the 6 spec acceptance criteria (show ≤200 ms, hide ≤100 ms, Esc, Tab focus, SSE live update, continuous hover)
+- **Playwright E2E bootstrap**: `@playwright/test` 1.x as devDependency, `playwright.config.mjs` with `webServer` auto-starting `deployboard --no-open`, and `e2e/tooltip.spec.mjs` covering the 6 spec acceptance criteria (show ≤200 ms, hide ≤100 ms, Esc, Tab focus, SSE live update, continuous hover)
 
 ### Changed
 
@@ -48,7 +69,7 @@ Status-dot fast tooltip: replaces browser UA `title` (500–1500 ms delay, unsty
 
 ## [0.1.0] — 2026-04-18
 
-Initial release of Launch Pilot (formerly Launchboard).
+Initial release of launch-pilot (formerly Launchboard).
 
 ### Added
 

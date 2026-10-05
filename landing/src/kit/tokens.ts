@@ -1,5 +1,5 @@
 /**
- * Launch Pilot — visual tokens.
+ * Deployboard — visual tokens.
  *
  * Aesthetic: macOS-native dev console. Deep graphite background, signal-cyan
  * primary (SSE stream feel), violet accent (developer tool signature). Status
@@ -70,6 +70,13 @@ export const colors = {
       border: "rgba(251, 191, 36, 0.38)",
       label: "Offline",
     },
+    // Fork addition: a job retired on purpose must not read as a failure.
+    disabled: {
+      fg: "#8B94A7",
+      bg: "rgba(139, 148, 167, 0.12)",
+      border: "rgba(139, 148, 167, 0.34)",
+      label: "Disabled",
+    },
   },
 } as const;
 
@@ -81,13 +88,14 @@ export const SERVICE_STATUS_KEYS: readonly ServiceStatus[] = [
   "completed",
   "stopped",
   "error",
+  "disabled",
   "offline",
 ] as const;
 
 export const typography = {
   fontFamily: {
     sans: "var(--font-space-grotesk), ui-sans-serif, system-ui, -apple-system, sans-serif",
-    mono: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
+    mono: "var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
     display:
       "var(--font-space-grotesk), ui-sans-serif, system-ui, -apple-system, sans-serif",
   },

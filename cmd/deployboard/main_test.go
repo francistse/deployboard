@@ -12,6 +12,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/A404coder/deployboard/internal/inventory"
+	"github.com/A404coder/deployboard/internal/launchd"
+	"github.com/A404coder/deployboard/internal/plist"
 )
 
 func startTestServer(t *testing.T, port int, noOpen bool) (url string, cancel context.CancelFunc) {
@@ -34,7 +38,16 @@ func startTestServer(t *testing.T, port int, noOpen bool) (url string, cancel co
 	actualPort := ln.Addr().(*net.TCPAddr).Port
 	url = fmt.Sprintf("http://127.0.0.1:%d", actualPort)
 
-	srv := newServer(cfg)
+	app, err := newApp(cfg)
+	if err != nil {
+		cancel()
+		t.Fatalf("newApp: %v", err)
+	}
+	srv, err := newServer(cfg, app)
+	if err != nil {
+		cancel()
+		t.Fatalf("newServer: %v", err)
+	}
 
 	go func() {
 		_ = srv.Serve(ln)
@@ -132,8 +145,9 @@ func TestServerServesHTML(t *testing.T) {
 	}
 
 	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "Launch Pilot") {
-		t.Errorf("GET / body does not contain 'Launch Pilot'")
+	// The fork brands the page "Deployboard".
+	if !strings.Contains(string(body), "Deployboard") {
+		t.Errorf("GET / body does not contain 'Deployboard'")
 	}
 }
 
@@ -195,12 +209,12 @@ func TestServerExplicitPort(t *testing.T) {
 	}
 }
 
-func TestStartupBanner_LaunchPilot(t *testing.T) {
+func TestStartupBanner_Deployboard(t *testing.T) {
 	var buf bytes.Buffer
 	printBanner(&buf, "http://127.0.0.1:18080")
 
 	line := buf.String()
-	matched, err := regexp.MatchString(`^Launch Pilot running at http://127\.0\.0\.1:\d+/?\n$`, line)
+	matched, err := regexp.MatchString(`^Deployboard running at http://127\.0\.0\.1:\d+/?\n$`, line)
 	if err != nil {
 		t.Fatalf("regex compile: %v", err)
 	}
@@ -233,5 +247,91 @@ func TestGracefulShutdown(t *testing.T) {
 	_, err = client.Get(url + "/")
 	if err == nil {
 		t.Error("expected connection error after shutdown, got nil")
+	}
+}
+
+func TestParseFlags_SelfLabel(t *testing.T) {
+	cfg, _, err := parseFlags([]string{"--self-label", "com.deployboard.launch-pilot"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SelfLabel != "com.deployboard.launch-pilot" {
+		t.Fatalf("SelfLabel = %q", cfg.SelfLabel)
+	}
+	cfg, _, err = parseFlags(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SelfLabel != "" {
+		t.Fatalf("empty flag must stay empty so the env can fill it, got %q", cfg.SelfLabel)
+	}
+}
+
+// "Restart all" on the dashboard's group must reload everyone else first.
+// The self entry is a success with the self-restart note, and launchctl is
+// never asked to bootout this process.
+func TestGroupAction_ReloadAppliesSelfLast(t *testing.T) {
+	const self = "com.deployboard.launch-pilot"
+	const web = "com.example.board.web"
+	const worker = "com.example.board.worker"
+	list := "PID\tStatus\tLabel\n" +
+		"111\t0\t" + self + "\n" +
+		"222\t0\t" + web + "\n" +
+		"333\t0\t" + worker + "\n"
+	plists := []plist.ScanResult{
+		{Path: "/Users/testuser/Library/LaunchAgents/" + self + ".plist", Data: plist.PlistData{Label: self, ProgramArguments: []string{"/usr/local/bin/launch-pilot"}, KeepAlive: true, RunAtLoad: true}},
+		{Path: "/Users/testuser/Library/LaunchAgents/" + web + ".plist", Data: plist.PlistData{Label: web, ProgramArguments: []string{"/usr/local/bin/web"}}},
+		{Path: "/Users/testuser/Library/LaunchAgents/" + worker + ".plist", Data: plist.PlistData{Label: worker, ProgramArguments: []string{"/usr/local/bin/worker"}}},
+	}
+	var calls []struct {
+		name string
+		args []string
+	}
+	svc := launchd.NewService()
+	svc.SetSelfLabel(self)
+	svc.SetEnrichment(inventory.New(inventory.Config{
+		Groups: []inventory.Group{{Name: "Deployboard", Match: []string{"com.deployboard.*", "com.example.board.*"}}},
+		Hidden: []string{"com.apple.*"},
+		Ours:   []string{"com.deployboard.*", "com.example.board.*"},
+	}), time.Minute)
+	svc.SetSourcesForTest(
+		func() (string, error) { return list, nil },
+		func() []plist.ScanResult { return plists },
+		func(name string, args ...string) (*launchd.ExecResult, error) {
+			calls = append(calls, struct {
+				name string
+				args []string
+			}{name, args})
+			return &launchd.ExecResult{}, nil
+		},
+	)
+	app := &appState{svc: svc, jobs: &recordingService{Service: svc}}
+
+	results, err := app.GroupAction("Deployboard", "reload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("got %d results, want 3: %+v", len(results), results)
+	}
+	if results[0].Label != web || results[1].Label != worker || results[2].Label != self {
+		t.Fatalf("order = %s, %s, %s; self must be last", results[0].Label, results[1].Label, results[2].Label)
+	}
+	last := results[2]
+	if !last.OK || !last.Self || last.Note != launchd.SelfRestartNote {
+		t.Fatalf("self entry = %+v", last)
+	}
+	var bootouts []string
+	for _, c := range calls {
+		joined := strings.Join(c.args, " ")
+		if strings.Contains(joined, self) {
+			t.Errorf("self label reached launchctl: %s %v", c.name, c.args)
+		}
+		if len(c.args) >= 2 && c.args[0] == "bootout" {
+			bootouts = append(bootouts, c.args[1])
+		}
+	}
+	if len(bootouts) != 2 || !strings.Contains(bootouts[0], web) || !strings.Contains(bootouts[1], worker) {
+		t.Fatalf("bootout order = %v, want %s then %s", bootouts, web, worker)
 	}
 }

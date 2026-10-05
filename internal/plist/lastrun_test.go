@@ -10,12 +10,12 @@ import (
 
 // fakeFileInfo implements os.FileInfo with a controllable ModTime.
 type fakeFileInfo struct {
-	name    string
-	mtime   time.Time
-	size    int64
-	mode    os.FileMode
-	isDir   bool
-	sys     any
+	name  string
+	mtime time.Time
+	size  int64
+	mode  os.FileMode
+	isDir bool
+	sys   any
 }
 
 func (f *fakeFileInfo) Name() string       { return f.name }

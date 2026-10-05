@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useRef, useLayoutEffect, useEffect } from 'preact/hooks';
 import { useComputed, useSignalEffect } from '@preact/signals';
 import { jobs, tooltipTarget } from '../lib/state.js';
+import { t } from '../lib/i18n.js';
 
 const STATUSES_EXPECTING_LAST_RUN = new Set(['completed', 'scheduled']);
 
@@ -13,12 +14,12 @@ export function buildStatusTooltip(job) {
 export function buildStatusTooltipParts(job) {
   const fmt = (iso) => new Date(iso).toLocaleString();
   const parts = [job.status];
-  if (job.nextRunAt) parts.push(`Next run: ${fmt(job.nextRunAt)}`);
+  if (job.nextRunAt) parts.push(t('tooltip.nextRun', { when: fmt(job.nextRunAt) }));
   if (job.lastRunAt) {
-    parts.push(`Last run: ${fmt(job.lastRunAt)}`);
+    parts.push(t('tooltip.lastRun', { when: fmt(job.lastRunAt) }));
   } else if (STATUSES_EXPECTING_LAST_RUN.has(job.status)) {
     const hasLogPath = Boolean(job.standardOutPath) || Boolean(job.standardErrPath);
-    parts.push(hasLogPath ? 'Last run: unknown' : 'Last run: unknown (no log path configured)');
+    parts.push(t(hasLogPath ? 'tooltip.lastUnknown' : 'tooltip.lastNoLog'));
   }
   return parts;
 }

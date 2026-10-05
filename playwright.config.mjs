@@ -14,7 +14,7 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command: `go run ./cmd/launch-pilot --no-open --port=${PORT}`,
+    command: `go run ./cmd/deployboard --no-open --port=${PORT}`,
     url: `http://127.0.0.1:${PORT}/`,
     timeout: 60_000,
     reuseExistingServer: !process.env.CI,

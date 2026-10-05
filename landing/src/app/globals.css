@@ -6,13 +6,16 @@
  */
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #ededed;
-  --color-primary: #8B5CF6;
-  --color-accent: #06B6D4;
-  --color-surface: rgba(255, 255, 255, 0.05);
-  --color-border: rgba(255, 255, 255, 0.1);
-  --color-text-muted: rgba(255, 255, 255, 0.5);
+  /* Baseline, kept in step with src/kit/tokens.ts — the page's real source of
+     truth. Morphing these to a different palette is the bug: the kit's
+     bg.base / brand.primary are what every section is drawn with. */
+  --background: #05070d; /* tokens.colors.bg.base */
+  --foreground: #f4f6fb; /* tokens.colors.fg.primary */
+  --color-primary: #22d3ee; /* tokens.colors.brand.primary */
+  --color-accent: #7c5cff; /* tokens.colors.brand.accent */
+  --color-surface: rgba(255, 255, 255, 0.04); /* bg.surface */
+  --color-border: rgba(255, 255, 255, 0.1); /* border.default */
+  --color-text-muted: rgba(244, 246, 251, 0.62); /* fg.muted */
 }
 
 @theme inline {
@@ -20,7 +23,7 @@
   --color-foreground: var(--foreground);
   --color-text-muted: var(--color-text-muted);
   --font-sans: var(--font-space-grotesk);
-  --font-mono: var(--font-dm-sans);
+  --font-mono: var(--font-jetbrains-mono);
 
   --animate-aurora: aurora 8s ease-in-out infinite alternate;
   --animate-shimmer: shimmer 2s linear infinite;

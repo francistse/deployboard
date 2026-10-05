@@ -5,59 +5,61 @@ import {
   filteredJobs,
   categoryFilter,
   statusFilter,
-  onlyMine,
+  showNoise,
   categoryCounts,
   statusCounts,
 } from '../lib/state.js';
 import { searchQuery } from '../lib/state.js';
 import { CATEGORY_LABELS, CATEGORY_KEYS, STATUS_KEYS } from '../lib/classify.js';
 import { STATUS_DISPLAY } from './filter-bar.js';
-import { FIXTURES, resetSignals } from '../lib/test-fixtures.js';
+import { FIXTURES, COUNTS, resetSignals } from '../lib/test-fixtures.js';
 
 describe('FilterBar: category chips', () => {
   beforeEach(resetSignals);
 
-  it('should have 4 category options: All, Mine, System, 3rd-party', () => {
+  it('has 4 category options: All, Ours, Noise, Other', () => {
     assert.equal(CATEGORY_KEYS.length, 4);
-    assert.deepEqual(CATEGORY_KEYS, ['all', 'mine', 'system', 'thirdparty']);
-    assert.equal(CATEGORY_LABELS.mine, 'Mine');
-    assert.equal(CATEGORY_LABELS.system, 'System');
-    assert.equal(CATEGORY_LABELS.thirdparty, '3rd-party');
+    assert.deepEqual(CATEGORY_KEYS, ['all', 'ours', 'noise', 'other']);
+    assert.equal(CATEGORY_LABELS.ours, 'Ours');
+    assert.equal(CATEGORY_LABELS.noise, 'Noise');
+    assert.equal(CATEGORY_LABELS.other, 'Other');
   });
 
-  it('categoryCounts reflects correct counts per category', () => {
+  it('categoryCounts reflects the full job list, noise included', () => {
     jobs.value = FIXTURES;
     const counts = categoryCounts.value;
-    assert.equal(counts.all, 7);
-    assert.equal(counts.mine, 3);
-    assert.equal(counts.system, 2);
-    assert.equal(counts.thirdparty, 2);
+    assert.equal(counts.all, COUNTS.all);
+    assert.equal(counts.ours, COUNTS.ours);
+    assert.equal(counts.noise, COUNTS.noise);
+    assert.equal(counts.other, COUNTS.other);
   });
 
   it('setting categoryFilter updates filteredJobs', () => {
     jobs.value = FIXTURES;
-    categoryFilter.value = 'mine';
-    assert.equal(filteredJobs.value.length, 3);
-    categoryFilter.value = 'system';
-    assert.equal(filteredJobs.value.length, 2);
-    categoryFilter.value = 'thirdparty';
-    assert.equal(filteredJobs.value.length, 2);
+    showNoise.value = true; // the noise chip is only selectable with noise shown
+
+    categoryFilter.value = 'ours';
+    assert.equal(filteredJobs.value.length, COUNTS.ours);
+    categoryFilter.value = 'noise';
+    assert.equal(filteredJobs.value.length, COUNTS.noise);
+    categoryFilter.value = 'other';
+    assert.equal(filteredJobs.value.length, COUNTS.other);
     categoryFilter.value = 'all';
-    assert.equal(filteredJobs.value.length, 7);
+    assert.equal(filteredJobs.value.length, COUNTS.all);
   });
 });
 
 describe('FilterBar: status tabs', () => {
   beforeEach(resetSignals);
 
-  it('should have 7 status options including scheduled/completed/offline', () => {
-    assert.equal(STATUS_KEYS.length, 7);
+  it('has 8 status options including disabled', () => {
+    assert.equal(STATUS_KEYS.length, 8);
     assert.deepEqual(STATUS_KEYS, [
-      'all', 'running', 'scheduled', 'completed', 'stopped', 'error', 'offline',
+      'all', 'running', 'scheduled', 'completed', 'stopped', 'error', 'offline', 'disabled',
     ]);
   });
 
-  it('STATUS_DISPLAY exports labels for all 7 statuses', () => {
+  it('STATUS_DISPLAY exports a label for all 8 statuses', () => {
     assert.equal(STATUS_DISPLAY.all, 'All');
     assert.equal(STATUS_DISPLAY.running, 'Running');
     assert.equal(STATUS_DISPLAY.scheduled, 'Scheduled');
@@ -65,69 +67,52 @@ describe('FilterBar: status tabs', () => {
     assert.equal(STATUS_DISPLAY.stopped, 'Stopped');
     assert.equal(STATUS_DISPLAY.error, 'Error');
     assert.equal(STATUS_DISPLAY.offline, 'Offline');
+    assert.equal(STATUS_DISPLAY.disabled, 'Disabled');
   });
 
   it('statusCounts reflects correct counts per status', () => {
     jobs.value = FIXTURES;
     const counts = statusCounts.value;
-    assert.equal(counts.all, 7);
+    assert.equal(counts.all, COUNTS.all);
     assert.equal(counts.running, 3);
     assert.equal(counts.stopped, 2);
     assert.equal(counts.error, 2);
-  });
-
-  it('setting statusFilter updates filteredJobs', () => {
-    jobs.value = FIXTURES;
-    statusFilter.value = 'running';
-    assert.equal(filteredJobs.value.length, 3);
-    statusFilter.value = 'stopped';
-    assert.equal(filteredJobs.value.length, 2);
-    statusFilter.value = 'error';
-    assert.equal(filteredJobs.value.length, 2);
-    statusFilter.value = 'all';
-    assert.equal(filteredJobs.value.length, 7);
+    assert.equal(counts.disabled, 1);
   });
 });
 
-describe('FilterBar: Only Mine toggle', () => {
+describe('FilterBar: noise gate', () => {
   beforeEach(resetSignals);
 
-  it('onlyMine=true forces categoryFilter to "mine" (via effect in state.js)', () => {
+  it('hides every noise job while showNoise is off', () => {
     jobs.value = FIXTURES;
-
-    categoryFilter.value = 'system';
-    assert.equal(categoryFilter.value, 'system');
-
-    onlyMine.value = true;
-    assert.equal(categoryFilter.value, 'mine');
+    assert.equal(filteredJobs.value.length, COUNTS.ours + COUNTS.other);
+    assert.ok(filteredJobs.value.every(j => j.category !== 'noise'));
   });
 
-  it('turning onlyMine OFF resets categoryFilter to "all"', () => {
+  it('showNoise=true brings the vendor/OS jobs back', () => {
     jobs.value = FIXTURES;
-
-    onlyMine.value = true;
-    assert.equal(categoryFilter.value, 'mine');
-
-    onlyMine.value = false;
-    assert.equal(categoryFilter.value, 'all');
+    showNoise.value = true;
+    assert.equal(filteredJobs.value.length, COUNTS.all);
   });
 
-  it('onlyMine + statusFilter compose correctly (intersection)', () => {
+  it('cannot stay on the noise chip once noise is hidden', () => {
     jobs.value = FIXTURES;
-    onlyMine.value = true;
-    statusFilter.value = 'error';
-    // Only user non-apple error jobs
-    const labels = filteredJobs.value.map(j => j.label);
-    assert.deepEqual(labels, ['com.myco.agent']);
+    showNoise.value = true;
+    categoryFilter.value = 'noise';
+    assert.equal(categoryFilter.value, 'noise');
+
+    showNoise.value = false;
+    assert.equal(categoryFilter.value, 'all', 'the noise chip must fall back to all');
   });
 });
 
 describe('FilterBar: filter composition', () => {
   beforeEach(resetSignals);
 
-  it('category + status compose as AND (Mine + Error = intersection)', () => {
+  it('category + status compose as AND (Ours + Error = intersection)', () => {
     jobs.value = FIXTURES;
-    categoryFilter.value = 'mine';
+    categoryFilter.value = 'ours';
     statusFilter.value = 'error';
     const labels = filteredJobs.value.map(j => j.label);
     assert.deepEqual(labels, ['com.myco.agent']);
@@ -135,33 +120,32 @@ describe('FilterBar: filter composition', () => {
 
   it('category + status + search all compose as AND', () => {
     jobs.value = FIXTURES;
-    categoryFilter.value = 'system';
+    showNoise.value = true;
+    categoryFilter.value = 'noise';
     statusFilter.value = 'running';
     searchQuery.value = 'spotlight';
     const labels = filteredJobs.value.map(j => j.label);
     assert.deepEqual(labels, ['com.apple.spotlight']);
   });
 
-  it('search is preserved across tab/chip switches', () => {
+  it('search is preserved across chip switches', () => {
     jobs.value = FIXTURES;
     searchQuery.value = 'com.';
 
-    categoryFilter.value = 'mine';
-    for (const j of filteredJobs.value) {
-      assert.ok(j.label.includes('com.'));
+    for (const cat of ['all', 'ours', 'other']) {
+      categoryFilter.value = cat;
+      for (const j of filteredJobs.value) {
+        assert.ok(j.label.toLowerCase().includes('com.'));
+      }
     }
+  });
 
-    statusFilter.value = 'stopped';
+  it('status filter still applies while searching', () => {
+    jobs.value = FIXTURES;
+    searchQuery.value = 'com.';
+    statusFilter.value = 'error';
     for (const j of filteredJobs.value) {
-      assert.ok(j.label.includes('com.'));
-      assert.equal(j.status, 'stopped');
-    }
-
-    // Switch back to all — search still active
-    categoryFilter.value = 'all';
-    statusFilter.value = 'all';
-    for (const j of filteredJobs.value) {
-      assert.ok(j.label.includes('com.'));
+      assert.equal(j.status, 'error');
     }
   });
 });

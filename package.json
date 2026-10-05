@@ -1,5 +1,5 @@
 {
-  "name": "launch-pilot-e2e",
+  "name": "deployboard-e2e",
   "private": true,
   "version": "0.0.0",
   "type": "module",
