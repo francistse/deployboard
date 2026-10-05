@@ -4,8 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/francistse/deployboard)](https://github.com/francistse/deployboard/releases)
 [![Platform: macOS 13+](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey.svg)](docs/INSTALL-macos.md)
+[![Live briefing](https://img.shields.io/badge/live%20briefing-github%20pages-22D3EE)](https://francistse.github.io/deployboard/)
 
 **Launchd has no dashboard. This is the console for managing your own launchd services in the browser, and it exports Prometheus metrics.**
+
+**[Open the live briefing](https://francistse.github.io/deployboard/)** — the color version of this page. Click Ours, Other, Noise, then `/metrics` and Telegram.
 
 launchd is hard to read from the terminal. One command installs the console. The browser shows status, logs, and alerts.
 
@@ -43,7 +46,7 @@ One message when a job breaks, one when it comes back. A switch per application.
 
 <img src="docs/images/telegram.png" alt="Telegram alert for a restart storm" width="960">
 
-The same preview is live on the landing page: click the views, `/metrics`, and Telegram there.
+Same console, live: [francistse.github.io/deployboard](https://francistse.github.io/deployboard/).
 
 ## Other ways to install
 

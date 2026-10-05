@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - README is a 10-second scan: the positioning one-liner, one install command, and pictures of Ours / Other / Noise, the Prometheus exporter, and Telegram alerts. Statuses, API, architecture, and development moved to `docs/REFERENCE.md` and `docs/DEVELOPMENT.md`.
 - Landing hero uses the same one-liner and a live preview of the three views, `/metrics`, and a Telegram alert.
+- README links the live briefing at `https://francistse.github.io/deployboard/` from the badge row and the first paragraph.
 
 ## [0.0.2] — 2026-10-05
 
